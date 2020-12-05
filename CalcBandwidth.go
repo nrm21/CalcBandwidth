@@ -1,17 +1,30 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"locallibs/support"
 	"math"
+	"runtime"
 	"time"
+
+	"gopkg.in/yaml.v2"
 )
 
 type config struct {
 	// var name has to be uppercase here or it won't work
-	BandwidthTotal float64 `json:"bandwidthTotal"`
-	BandwidthLeft  float64 `json:"bandwidthLeft"`
+	BandwidthTotal float64 `yaml:"bandwidthTotal"`
+	BandwidthLeft  float64 `yaml:"bandwidthLeft"`
+}
+
+// GetConfigContents Unmarshals the config contents from file into memory
+func GetConfigContents(filename string) config {
+	var conf config
+	err := yaml.Unmarshal(support.ReadConfigFileContents(filename), &conf)
+	if err != nil {
+		fmt.Printf("There was an error decoding the yaml file. err = %s\n", err)
+	}
+
+	return conf
 }
 
 // CalcMonthDays returns the number of days in the month
@@ -43,15 +56,11 @@ func CalcMonthDays(month time.Month, year int) float64 {
 }
 
 func main() {
-	support.SetupCloseHandler() // ctrl + c handler
-
-	var config config
-	stringConf := support.ReadConfigFileContents("config.json")
-	err := json.Unmarshal([]byte(stringConf), &config)
-	if err != nil {
-		fmt.Printf("There was an error decoding the json. err = %s\n", err)
-		return
+	if runtime.GOOS == "windows" {
+		support.SetupCloseHandler() // ctrl + c handler
 	}
+
+	config := GetConfigContents("config.yml")
 
 	currentYear := time.Now().UTC().Year()
 	currentMonth := time.Now().UTC().Month()
@@ -71,10 +80,13 @@ func main() {
 	fmt.Println()
 	fmt.Printf("Fractional days left in month:              %.3f   (Days this month:   %d)\n", daysLeftInMonth, int(totalDaysInMonth))
 	fmt.Printf("Cumulative bandwidth allowed up to today:   %.0f GB   (Used / Left:   %.0f / %d GB)\n", gbAllowedSoFar, bwCurrentUsed, int(gbLeftToUse))
-	fmt.Printf("Bandwidth per day remaining:                %.2f GB   (Daily average:   %.2f GB)\n", gbPerDayLeft, gbPerDay)
-	fmt.Printf("\nPress ctrl + c to exit\n")
+	fmt.Printf("Bandwidth per day remaining:                %.2f GB   (Daily average:   %.2f GB)\n\n", gbPerDayLeft, gbPerDay)
 
-	// now run until user exits with ctrl + c  this allows command line to
-	// remain open as long as user likes (will close after being open an hour)
-	time.Sleep(time.Hour)
+	if runtime.GOOS == "windows" {
+		fmt.Printf("Press ctrl + c to exit\n")
+
+		// now run until user exits with ctrl + c  this allows command line to
+		// remain open as long as user likes (will close after being open an hour)
+		time.Sleep(time.Hour)
+	}
 }
