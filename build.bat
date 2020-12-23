@@ -1,1 +1,1 @@
-go build -tags walk_use_cgo -ldflags="-H windowsgui" -o "Bandwidth Calc.exe" .
+go build -tags walk_use_cgo -ldflags="-H windowsgui" -o "CalcBandwidth.exe" .
