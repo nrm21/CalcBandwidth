@@ -12,43 +12,6 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
-// Reads from the given registry key and returns the result or blank if there is none
-func readStrValueFromRegistry(regKey string, value string) string {
-	k, err := registry.OpenKey(registry.CURRENT_USER, regKey, registry.QUERY_VALUE)
-	if err != nil {
-		return ""
-	}
-	s, _, err := k.GetStringValue(value)
-	if err != nil {
-		return ""
-	}
-	k.Close()
-
-	return s
-}
-
-// Writes the given value to the given registry key
-func writeStrValueToRegistry(regKey string, regValue string, value string) {
-	k, err := registry.OpenKey(registry.CURRENT_USER, regKey, registry.QUERY_VALUE|registry.SET_VALUE)
-	if err != nil {
-		log.Fatalf("Unable to open key to write too")
-	}
-	err = k.SetStringValue(regValue, value)
-	if err != nil {
-		log.Fatalf("Unable to set value in key to write too")
-	}
-}
-
-// Creates the given registry key
-func writeKeyToRegistry(regKey string) bool {
-	_, _, err := registry.CreateKey(registry.CURRENT_USER, regKey, registry.QUERY_VALUE|registry.SET_VALUE)
-	if err != nil {
-		return false
-	} else {
-		return true
-	}
-}
-
 // Returns the number of days in the month
 func calcMonthDays(month time.Month, year int) float64 {
 	var days float64
@@ -77,7 +40,7 @@ func calcMonthDays(month time.Month, year int) float64 {
 	return days
 }
 
-func calculate(bwCurrentUsed float64) string {
+func calculateBandwidth(bwCurrentUsed float64) string {
 	currentYear := time.Now().UTC().Year()
 	currentMonth := time.Now().UTC().Month()
 	totalDaysInMonth := calcMonthDays(currentMonth, currentYear)
@@ -101,27 +64,32 @@ func calculate(bwCurrentUsed float64) string {
 }
 
 func main() {
-	var bwCurrentUsed float64
-	bwCurrentUsed = 1
-	regKey := `SOFTWARE\NateMorrison\CalcBandwidth`
-
-	// now attempt to read last known value of bwCurrentUsed from registry
-	s := readStrValueFromRegistry(regKey, "bwCurrentUsed")
-	if s == "" {
-		println("Registry key doesn't exist... creating it")
-
-		written := writeKeyToRegistry(regKey)
-		if written != true {
-			log.Fatalf("Error creating registry key, exiting program")
-		}
-	} else {
-		bwCurrentUsed, _ = strconv.ParseFloat(s, 64)
-	}
-
-	output := calculate(bwCurrentUsed)
-
 	var resultMsgBox *walk.TextEdit
 	var bwTextBox *walk.LineEdit
+	var bwCurrentUsed float64
+	bwCurrentUsed = 0
+	regKey := `SOFTWARE\NateMorrison\CalcBandwidth`
+	regValue := "bwCurrentUsed"
+
+	// now attempt to read last known value of bwCurrentUsed from registry
+	k, err := registry.OpenKey(registry.CURRENT_USER, regKey, registry.QUERY_VALUE)
+	if err != nil {
+		// key dones't exist lets create it
+		k, _, err = registry.CreateKey(registry.CURRENT_USER, regKey, registry.QUERY_VALUE|registry.SET_VALUE)
+		if err != nil {
+			log.Fatalf("Error creating registry key, exiting program")
+		}
+		// then write current value to the key
+		k, err := registry.OpenKey(registry.CURRENT_USER, regKey, registry.QUERY_VALUE|registry.SET_VALUE)
+		if err != nil {
+			log.Fatalf("Unable to open key to write too")
+		}
+		k.SetStringValue(regValue, strconv.FormatFloat(bwCurrentUsed, 'f', -1, 64))
+	}
+	s, _, err := k.GetStringValue(regValue)
+	bwCurrentUsed, _ = strconv.ParseFloat(s, 64)
+
+	output := calculateBandwidth(bwCurrentUsed)
 
 	MainWindow{
 		Title:  "Bandwidth Calculator",
@@ -139,8 +107,14 @@ func main() {
 							go func() {
 								// get new bandwidth value entered by user and write to registry before calculating
 								bwCurrentUsed, _ = strconv.ParseFloat(bwTextBox.Text(), 64)
-								writeStrValueToRegistry(regKey, "bwCurrentUsed", strconv.FormatFloat(bwCurrentUsed, 'f', -1, 64))
-								resultMsgBox.SetText(calculate(bwCurrentUsed))
+
+								k, err := registry.OpenKey(registry.CURRENT_USER, regKey, registry.QUERY_VALUE|registry.SET_VALUE)
+								if err != nil {
+									log.Fatalf("Unable to open key to write too")
+								}
+								k.SetStringValue(regValue, strconv.FormatFloat(bwCurrentUsed, 'f', -1, 64))
+
+								resultMsgBox.SetText(calculateBandwidth(bwCurrentUsed))
 							}()
 						},
 					},
