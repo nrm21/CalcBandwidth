@@ -74,7 +74,7 @@ func main() {
 	// now attempt to read last known value of bwCurrentUsed from registry
 	k, err := registry.OpenKey(registry.CURRENT_USER, regKey, registry.QUERY_VALUE)
 	if err != nil {
-		// key dones't exist lets create it
+		// key doesn't exist lets create it
 		k, _, err = registry.CreateKey(registry.CURRENT_USER, regKey, registry.QUERY_VALUE|registry.SET_VALUE)
 		if err != nil {
 			log.Fatalf("Error creating registry key, exiting program")
@@ -83,8 +83,9 @@ func main() {
 		k, err := registry.OpenKey(registry.CURRENT_USER, regKey, registry.QUERY_VALUE|registry.SET_VALUE)
 		if err != nil {
 			log.Fatalf("Unable to open key to write too")
+		} else {
+			k.SetStringValue(regValue, strconv.FormatFloat(bwCurrentUsed, 'f', -1, 64))
 		}
-		k.SetStringValue(regValue, strconv.FormatFloat(bwCurrentUsed, 'f', -1, 64))
 	}
 	s, _, err := k.GetStringValue(regValue)
 	bwCurrentUsed, _ = strconv.ParseFloat(s, 64)
@@ -111,8 +112,9 @@ func main() {
 								k, err := registry.OpenKey(registry.CURRENT_USER, regKey, registry.QUERY_VALUE|registry.SET_VALUE)
 								if err != nil {
 									log.Fatalf("Unable to open key to write too")
+								} else {
+									k.SetStringValue(regValue, strconv.FormatFloat(bwCurrentUsed, 'f', -1, 64))
 								}
-								k.SetStringValue(regValue, strconv.FormatFloat(bwCurrentUsed, 'f', -1, 64))
 
 								resultMsgBox.SetText(calculateBandwidth(bwCurrentUsed))
 							}()
@@ -128,7 +130,6 @@ func main() {
 						Font: Font{
 							Family:    "Ariel",
 							PointSize: 15,
-							//Bold:      true,
 						},
 						Text: output,
 					},
