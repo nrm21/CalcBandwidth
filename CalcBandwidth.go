@@ -12,18 +12,18 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
+// Global vars
+var resultMsgBox *walk.TextEdit
+var bwTextBox *walk.LineEdit
+var bwCurrentUsed float64
+var regKey, regValue string
+
 // Returns the number of days in the month
 func calcMonthDays(month time.Month, year int) float64 {
 	var days float64
 
 	switch int(month) {
-	case 1: // january
-	case 3: // march
-	case 5: // may
-	case 7: // july
-	case 8: // august
-	case 10: // october
-	case 12: // december
+	case 1, 3, 5, 7, 8, 10, 12: // january march may july august october december
 		days = 31
 	default: // other months
 		days = 30
@@ -40,7 +40,7 @@ func calcMonthDays(month time.Month, year int) float64 {
 	return days
 }
 
-func calculateBandwidth(bwCurrentUsed float64) string {
+func calculateBandwidth() string {
 	currentYear := time.Now().UTC().Year()
 	currentMonth := time.Now().UTC().Month()
 	totalDaysInMonth := calcMonthDays(currentMonth, currentYear)
@@ -57,19 +57,31 @@ func calculateBandwidth(bwCurrentUsed float64) string {
 	gbPerDayLeft := gbLeftToUse / daysLeftInMonth
 
 	output := fmt.Sprintf("Fractional days left in month:                      %.3f       (Days this month:  %d)\r\n", daysLeftInMonth, int(totalDaysInMonth))
-	output += fmt.Sprintf("Cumulative bandwidth allowed up to today:  %.0f GB     (Used / Left:  %.0f / %d GB)\r\n", gbAllowedSoFar, bwCurrentUsed, int(gbLeftToUse))
+	output += fmt.Sprintf("Cumulative bandwidth allowed up to today: %.0f GB     (Used / Left:  %.0f / %d GB)\r\n", gbAllowedSoFar, bwCurrentUsed, int(gbLeftToUse))
 	output += fmt.Sprintf("Bandwidth per day remaining:                     %.2f GB  (Daily average:  %.2f GB)\r\n", gbPerDayLeft, gbPerDay)
 
 	return output
 }
 
+func setToRegAndCalc() {
+	// get new bandwidth value entered by user and write to registry before calculating
+	bwCurrentUsed, _ = strconv.ParseFloat(bwTextBox.Text(), 64)
+
+	k, err := registry.OpenKey(registry.CURRENT_USER, regKey, registry.QUERY_VALUE|registry.SET_VALUE)
+	if err != nil {
+		log.Fatalf("Unable to open key to write too")
+	} else {
+		k.SetStringValue(regValue, strconv.FormatFloat(bwCurrentUsed, 'f', -1, 64))
+	}
+
+	resultMsgBox.SetText(calculateBandwidth())
+}
+
 func main() {
-	var resultMsgBox *walk.TextEdit
-	var bwTextBox *walk.LineEdit
-	var bwCurrentUsed float64
+	// init some global vars
 	bwCurrentUsed = 0
-	regKey := `SOFTWARE\NateMorrison\CalcBandwidth`
-	regValue := "bwCurrentUsed"
+	regKey = `SOFTWARE\NateMorrison\CalcBandwidth`
+	regValue = "bwCurrentUsed"
 
 	// now attempt to read last known value of bwCurrentUsed from registry
 	k, err := registry.OpenKey(registry.CURRENT_USER, regKey, registry.QUERY_VALUE)
@@ -90,34 +102,30 @@ func main() {
 	s, _, err := k.GetStringValue(regValue)
 	bwCurrentUsed, _ = strconv.ParseFloat(s, 64)
 
-	output := calculateBandwidth(bwCurrentUsed)
+	output := calculateBandwidth()
 
 	MainWindow{
 		Title:  "Bandwidth Calculator",
-		Size:   Size{800, 200},
+		Size:   Size{820, 170},
 		Layout: VBox{},
 		Children: []Widget{
 			HSplitter{
 				Children: []Widget{
-					Label{Text: "Bandwidth Used:"},
-					LineEdit{AssignTo: &bwTextBox, Text: strconv.FormatFloat(bwCurrentUsed, 'f', -1, 64)},
-					PushButton{
-						MaxSize: Size{30, 20},
-						Text:    "Press to calculate",
-						OnClicked: func() {
-							go func() {
-								// get new bandwidth value entered by user and write to registry before calculating
-								bwCurrentUsed, _ = strconv.ParseFloat(bwTextBox.Text(), 64)
-
-								k, err := registry.OpenKey(registry.CURRENT_USER, regKey, registry.QUERY_VALUE|registry.SET_VALUE)
-								if err != nil {
-									log.Fatalf("Unable to open key to write too")
-								} else {
-									k.SetStringValue(regValue, strconv.FormatFloat(bwCurrentUsed, 'f', -1, 64))
-								}
-
-								resultMsgBox.SetText(calculateBandwidth(bwCurrentUsed))
-							}()
+					ScrollView{
+						Layout: HBox{MarginsZero: true},
+						Children: []Widget{
+							Label{Text: "Bandwidth Used:"},
+							LineEdit{
+								AssignTo:   &bwTextBox,
+								Text:       strconv.FormatFloat(bwCurrentUsed, 'f', -1, 64),
+								OnKeyPress: func(key walk.Key) { go setToRegAndCalc() },
+							},
+							PushButton{
+								MinSize:   Size{150, 20},
+								MaxSize:   Size{150, 20},
+								Text:      "Press to calculate",
+								OnClicked: func() { go setToRegAndCalc() },
+							},
 						},
 					},
 				},
@@ -126,6 +134,7 @@ func main() {
 				Children: []Widget{
 					TextEdit{
 						AssignTo: &resultMsgBox,
+						MinSize:  Size{800, 55},
 						ReadOnly: true,
 						Font: Font{
 							Family:    "Ariel",
