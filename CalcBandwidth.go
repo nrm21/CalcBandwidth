@@ -58,7 +58,7 @@ func calculateBandwidth() string {
 
 	output := fmt.Sprintf("Fractional days left in month:                      %.3f       (Days this month:  %d)\r\n", daysLeftInMonth, int(totalDaysInMonth))
 	output += fmt.Sprintf("Cumulative bandwidth allowed up to today: %.0f GB     (Used / Left:  %.0f / %d GB)\r\n", gbAllowedSoFar, bwCurrentUsed, int(gbLeftToUse))
-	output += fmt.Sprintf("Bandwidth per day remaining:                     %.2f GB  (Daily average:  %.2f GB)\r\n", gbPerDayLeft, gbPerDay)
+	output += fmt.Sprintf("Bandwidth per day remaining:                     %.3f GB  (Daily average:  %.3f GB)\r\n", gbPerDayLeft, gbPerDay)
 
 	return output
 }
@@ -125,10 +125,12 @@ func main() {
 								},
 							},
 							PushButton{
-								MinSize:   Size{150, 20},
-								MaxSize:   Size{150, 20},
-								Text:      "Press to calculate",
-								OnClicked: func() { go setToRegAndCalc() },
+								MinSize: Size{150, 20},
+								MaxSize: Size{150, 20},
+								Text:    "Press to calculate",
+								OnClicked: func() {
+									go setToRegAndCalc()
+								},
 							},
 						},
 					},
