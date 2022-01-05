@@ -116,9 +116,13 @@ func main() {
 						Children: []Widget{
 							Label{Text: "Bandwidth Used:"},
 							LineEdit{
-								AssignTo:   &bwTextBox,
-								Text:       strconv.FormatFloat(bwCurrentUsed, 'f', -1, 64),
-								OnKeyPress: func(key walk.Key) { go setToRegAndCalc() },
+								AssignTo: &bwTextBox,
+								Text:     strconv.FormatFloat(bwCurrentUsed, 'f', -1, 64),
+								OnKeyPress: func(key walk.Key) {
+									if key >= walk.Key0 && key <= walk.Key9 { // if a digit key pressed
+										go setToRegAndCalc()
+									}
+								},
 							},
 							PushButton{
 								MinSize:   Size{150, 20},
