@@ -12,12 +12,17 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
-// Global vars
+const regKeyBranch = `SOFTWARE\NateMorrison\CalcBandwidth`
+const regValue1 = "bwCurrentUsed"
+const regValue2 = "prevBwCurrentUsed"
+const regValue3 = "daysLeftInMonth"
+const regValue4 = "prevDaysLeftInMonth"
+
+// Global pointers
 var resultMsgBox *walk.TextEdit
 var bwTextBox *walk.LineEdit
-var bwCurrentUsed, prevBwCurrentUsed, daysLeftInMonth *float64
-var key registry.Key
-var regKey, regValue1, regValue2, regValue3 string
+var key *registry.Key
+var bwCurrentUsed, prevBwCurrentUsed, daysLeftInMonth, prevDaysLeftInMonth *float64
 
 // Returns the number of days in the month
 func calcMonthDays(month time.Month, year int) float64 {
@@ -76,7 +81,7 @@ func setToRegAndCalc() {
 // Attempts to read last known values of program from registry (stored from last run)
 func getRegKeyValues() registry.Key {
 	// key doesn't exist lets create it
-	k, exists, err := registry.CreateKey(registry.CURRENT_USER, regKey, registry.QUERY_VALUE|registry.SET_VALUE)
+	k, exists, err := registry.CreateKey(registry.CURRENT_USER, regKeyBranch, registry.QUERY_VALUE|registry.SET_VALUE)
 	if err != nil {
 		log.Fatalf("Error creating registry key, exiting program")
 	}
@@ -88,9 +93,11 @@ func getRegKeyValues() registry.Key {
 }
 
 // Thigs to do just before exit
-func closingFunctions(prevBw string) {
-	// now write the current bwCurrentUsed to previous
-	err := key.SetStringValue(regValue2, prevBw)
+func closingFunctions(prevBwAtProgStart, prevDaysAtProgStart string) {
+	// write all settings to registry for next run
+	key.SetStringValue(regValue1, fmt.Sprintf("%.0f", *bwCurrentUsed))
+
+	err := key.SetStringValue(regValue2, prevBwAtProgStart)
 	if err != nil {
 		log.Fatalf("Error writing registry value %s, exiting program", regValue2)
 	}
@@ -100,8 +107,10 @@ func closingFunctions(prevBw string) {
 		log.Fatalf("Error writing registry value %s, exiting program", regValue3)
 	}
 
-	// write the current bandwidth entered by user to bwCurrentUsed
-	key.SetStringValue(regValue1, fmt.Sprintf("%.0f", *bwCurrentUsed))
+	err = key.SetStringValue(regValue4, prevDaysAtProgStart)
+	if err != nil {
+		log.Fatalf("Error writing registry value %s, exiting program", regValue4)
+	}
 }
 
 // Get a string value from the registry
@@ -115,20 +124,18 @@ func GetRegStringValue(regStr string) string {
 }
 
 func main() {
-	// init some global vars
-	regKey = `SOFTWARE\NateMorrison\CalcBandwidth`
-	regValue1 = "bwCurrentUsed"
-	regValue2 = "prevBwCurrentUsed"
-	regValue3 = "daysLeftInMonth"
-	bwCurrentUsed, prevBwCurrentUsed, daysLeftInMonth = new(float64), new(float64), new(float64)
+	key = new(registry.Key)
+	*key = getRegKeyValues()
 
-	key = getRegKeyValues()
-
+	bwCurrentUsed, prevBwCurrentUsed, daysLeftInMonth, prevDaysLeftInMonth = new(float64), new(float64), new(float64), new(float64)
 	*bwCurrentUsed, _ = strconv.ParseFloat(GetRegStringValue(regValue1), 64)
 	*prevBwCurrentUsed, _ = strconv.ParseFloat(GetRegStringValue(regValue2), 64)
 	*daysLeftInMonth, _ = strconv.ParseFloat(GetRegStringValue(regValue3), 64)
+	*prevDaysLeftInMonth, _ = strconv.ParseFloat(GetRegStringValue(regValue4), 64)
 
-	prevBw := fmt.Sprintf("%.0f", *bwCurrentUsed) // record previous bandwidth now since this value might change a few times at runtime
+	// record previous settings now since these values might change a few times at runtime
+	prevBwAtProgStart := fmt.Sprintf("%.0f", *bwCurrentUsed)
+	prevDaysAtProgStart := fmt.Sprintf("%.3f", *daysLeftInMonth)
 
 	output := calculateBandwidth()
 
@@ -146,8 +153,8 @@ func main() {
 							LineEdit{
 								AssignTo: &bwTextBox,
 								Text:     strconv.FormatFloat(*bwCurrentUsed, 'f', -1, 64),
-								OnKeyPress: func(key walk.Key) {
-									if key >= walk.Key0 && key <= walk.Key9 { // if a digit key pressed
+								OnKeyPress: func(keystroke walk.Key) {
+									if keystroke >= walk.Key0 && keystroke <= walk.Key9 { // if a digit key pressed
 										go setToRegAndCalc()
 									}
 								},
@@ -181,5 +188,5 @@ func main() {
 		},
 	}.Run()
 
-	closingFunctions(prevBw)
+	closingFunctions(prevBwAtProgStart, prevDaysAtProgStart)
 }
