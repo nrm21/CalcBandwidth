@@ -15,10 +15,9 @@ import (
 // Global vars
 var resultMsgBox *walk.TextEdit
 var bwTextBox *walk.LineEdit
-var bwCurrentUsed, prevBwUsed float64
-var daysLeftInMonth *float64
+var bwCurrentUsed, prevBwCurrentUsed, daysLeftInMonth *float64
 var key registry.Key
-var regKey, regValue1, regValue2, regValue3, strBwCurrentUsed string
+var regKey, regValue1, regValue2, regValue3 string
 
 // Returns the number of days in the month
 func calcMonthDays(month time.Month, year int) float64 {
@@ -30,7 +29,6 @@ func calcMonthDays(month time.Month, year int) float64 {
 	default: // other months
 		days = 30
 	}
-
 	if month == 2 { // february
 		days = 28
 
@@ -54,15 +52,15 @@ func calculateBandwidth() string {
 	// do calcs
 	gbPerDay := bwLimitGBs / totalDaysInMonth
 	gbAllowedSoFar := math.Round(bwLimitGBs / totalDaysInMonth * (hoursSince / 24))
-	gbLeftToUse := bwLimitGBs - bwCurrentUsed
+	gbLeftToUse := bwLimitGBs - *bwCurrentUsed
 	prevDaysLeftInMonth := *daysLeftInMonth
 	*daysLeftInMonth = totalDaysInMonth - (hoursSince / 24)
-	daysSince := *daysLeftInMonth - prevDaysLeftInMonth
 	gbPerDayLeft := gbLeftToUse / *daysLeftInMonth
-	bwDifference := bwCurrentUsed - prevBwUsed
+	bwDifference := *bwCurrentUsed - *prevBwCurrentUsed
+	daysSince := prevDaysLeftInMonth - *daysLeftInMonth
 
 	output := fmt.Sprintf("Fractional days left in month:                       %.3f         (Days this month:  %d)\r\n", *daysLeftInMonth, int(totalDaysInMonth))
-	output += fmt.Sprintf("Cumulative bandwidth allowed up to today:   %.0f GB        (Used / Left:  %.0f / %d GB)\r\n", gbAllowedSoFar, bwCurrentUsed, int(gbLeftToUse))
+	output += fmt.Sprintf("Cumulative bandwidth allowed up to today:   %.0f GB        (Used / Left:  %.0f / %d GB)\r\n", gbAllowedSoFar, *bwCurrentUsed, int(gbLeftToUse))
 	output += fmt.Sprintf("Bandwidth per day remaining:                      %.3f GB   (Daily average:  %.3f GB)\r\n", gbPerDayLeft, gbPerDay)
 	output += fmt.Sprintf("Previous Bandwidth Difference and Days since:  %.0f GB        %.3f\r\n", bwDifference, daysSince)
 
@@ -70,8 +68,7 @@ func calculateBandwidth() string {
 }
 
 func setToRegAndCalc() {
-	bwCurrentUsed, _ = strconv.ParseFloat(bwTextBox.Text(), 64)
-	strBwCurrentUsed = bwTextBox.Text()
+	*bwCurrentUsed, _ = strconv.ParseFloat(bwTextBox.Text(), 64)
 
 	resultMsgBox.SetText(calculateBandwidth())
 }
@@ -104,40 +101,35 @@ func closingFunctions(prevBw string) {
 	}
 
 	// write the current bandwidth entered by user to bwCurrentUsed
-	key.SetStringValue(regValue1, strBwCurrentUsed)
+	key.SetStringValue(regValue1, fmt.Sprintf("%.0f", *bwCurrentUsed))
+}
+
+// Get a string value from the registry
+func GetRegStringValue(regStr string) string {
+	value, _, err := key.GetStringValue(regStr)
+	if err != nil {
+		log.Fatalf("Error reading registry value %s, exiting program", regStr)
+	}
+
+	return value
 }
 
 func main() {
 	// init some global vars
-	bwCurrentUsed = 0
 	regKey = `SOFTWARE\NateMorrison\CalcBandwidth`
 	regValue1 = "bwCurrentUsed"
 	regValue2 = "prevBwCurrentUsed"
 	regValue3 = "daysLeftInMonth"
-	daysLeftInMonth = new(float64)
-	var err error
+	bwCurrentUsed, prevBwCurrentUsed, daysLeftInMonth = new(float64), new(float64), new(float64)
 
 	key = getRegKeyValues()
 
-	strBwCurrentUsed, _, err = key.GetStringValue(regValue1)
-	if err != nil {
-		log.Fatalf("Error reading registry value %s, exiting program", regValue1)
-	}
-	prevBw := strBwCurrentUsed // record previous bandwidth now since this value might change a few times at runtime
+	*bwCurrentUsed, _ = strconv.ParseFloat(GetRegStringValue(regValue1), 64)
+	*prevBwCurrentUsed, _ = strconv.ParseFloat(GetRegStringValue(regValue2), 64)
+	*daysLeftInMonth, _ = strconv.ParseFloat(GetRegStringValue(regValue3), 64)
 
-	val, _, err := key.GetStringValue(regValue2)
-	if err != nil {
-		log.Fatalf("Error reading registry value %s, exiting program", regValue2)
-	}
-	prevBwUsed, _ = strconv.ParseFloat(val, 64)
+	prevBw := fmt.Sprintf("%.0f", *bwCurrentUsed) // record previous bandwidth now since this value might change a few times at runtime
 
-	val, _, err = key.GetStringValue(regValue3)
-	if err != nil {
-		log.Fatalf("Error reading registry value %s, exiting program", regValue3)
-	}
-	*daysLeftInMonth, _ = strconv.ParseFloat(val, 64)
-
-	bwCurrentUsed, _ = strconv.ParseFloat(strBwCurrentUsed, 64)
 	output := calculateBandwidth()
 
 	MainWindow{
@@ -153,7 +145,7 @@ func main() {
 							Label{Text: "Bandwidth Used:"},
 							LineEdit{
 								AssignTo: &bwTextBox,
-								Text:     strconv.FormatFloat(bwCurrentUsed, 'f', -1, 64),
+								Text:     strconv.FormatFloat(*bwCurrentUsed, 'f', -1, 64),
 								OnKeyPress: func(key walk.Key) {
 									if key >= walk.Key0 && key <= walk.Key9 { // if a digit key pressed
 										go setToRegAndCalc()
