@@ -16,7 +16,8 @@ import (
 var resultMsgBox *walk.TextEdit
 var bwTextBox *walk.LineEdit
 var bwCurrentUsed float64
-var regKey, regValue1 string
+var key registry.Key
+var regKey, regValue1, regValue2, strBwCurrentUsed, strPrevBwUsed string
 
 // Returns the number of days in the month
 func calcMonthDays(month time.Month, year int) float64 {
@@ -56,46 +57,45 @@ func calculateBandwidth() string {
 	daysLeftInMonth := totalDaysInMonth - (hoursSince / 24)
 	gbPerDayLeft := gbLeftToUse / daysLeftInMonth
 
-	output := fmt.Sprintf("Fractional days left in month:                      %.3f       (Days this month:  %d)\r\n", daysLeftInMonth, int(totalDaysInMonth))
-	output += fmt.Sprintf("Cumulative bandwidth allowed up to today: %.0f GB     (Used / Left:  %.0f / %d GB)\r\n", gbAllowedSoFar, bwCurrentUsed, int(gbLeftToUse))
+	output := fmt.Sprintf("Fractional days left in month:                      %.3f        (Days this month:  %d)\r\n", daysLeftInMonth, int(totalDaysInMonth))
+	output += fmt.Sprintf("Cumulative bandwidth allowed up to today:  %.0f GB       (Used / Left:  %.0f / %d GB)\r\n", gbAllowedSoFar, bwCurrentUsed, int(gbLeftToUse))
 	output += fmt.Sprintf("Bandwidth per day remaining:                     %.3f GB  (Daily average:  %.3f GB)\r\n", gbPerDayLeft, gbPerDay)
+	output += fmt.Sprintf("Previous Bandwidth Usage Entered:            %s GB\r\n", strPrevBwUsed)
 
 	return output
 }
 
 func setToRegAndCalc() {
-	// get new bandwidth value entered by user and write to registry before calculating
 	bwCurrentUsed, _ = strconv.ParseFloat(bwTextBox.Text(), 64)
-
-	k, err := registry.OpenKey(registry.CURRENT_USER, regKey, registry.QUERY_VALUE|registry.SET_VALUE)
-	if err != nil {
-		log.Fatalf("Unable to open key to write too")
-	} else {
-		k.SetStringValue(regValue1, strconv.FormatFloat(bwCurrentUsed, 'f', -1, 64))
-	}
+	strBwCurrentUsed = bwTextBox.Text()
 
 	resultMsgBox.SetText(calculateBandwidth())
 }
 
 // Attempts to read last known values of program from registry (stored from last run)
-func GetRegKeyValues() registry.Key {
-	k, err := registry.OpenKey(registry.CURRENT_USER, regKey, registry.QUERY_VALUE)
+func getRegKeyValues() registry.Key {
+	// key doesn't exist lets create it
+	k, exists, err := registry.CreateKey(registry.CURRENT_USER, regKey, registry.QUERY_VALUE|registry.SET_VALUE)
 	if err != nil {
-		// key doesn't exist lets create it
-		k, _, err = registry.CreateKey(registry.CURRENT_USER, regKey, registry.QUERY_VALUE|registry.SET_VALUE)
-		if err != nil {
-			log.Fatalf("Error creating registry key, exiting program")
-		}
-		// then write current value to the key
-		k, err := registry.OpenKey(registry.CURRENT_USER, regKey, registry.QUERY_VALUE|registry.SET_VALUE)
-		if err != nil {
-			log.Fatalf("Unable to open key to write too")
-		} else {
-			k.SetStringValue(regValue1, strconv.FormatFloat(bwCurrentUsed, 'f', -1, 64))
-		}
+		log.Fatalf("Error creating registry key, exiting program")
+	}
+	if exists {
+		log.Println("Registry key already existed")
 	}
 
 	return k
+}
+
+// Thigs to do just before exit
+func closingFunctions(prevBw string) {
+	// now write the current bwCurrentUsed to previous
+	err := key.SetStringValue(regValue2, prevBw)
+	if err != nil {
+		log.Fatalf("Error writing registry value %s, exiting program", regValue2)
+	}
+
+	// write the current bandwidth entered by user to bwCurrentUsed
+	key.SetStringValue(regValue1, strBwCurrentUsed)
 }
 
 func main() {
@@ -103,17 +103,26 @@ func main() {
 	bwCurrentUsed = 0
 	regKey = `SOFTWARE\NateMorrison\CalcBandwidth`
 	regValue1 = "bwCurrentUsed"
+	regValue2 = "prevBwCurrentUsed"
+	var err error
 
-	key := GetRegKeyValues()
-	sValue1, _, _ := key.GetStringValue(regValue1)
+	key = getRegKeyValues()
+	strBwCurrentUsed, _, err = key.GetStringValue(regValue1)
+	if err != nil {
+		log.Fatalf("Error reading registry value %s, exiting program", regValue1)
+	}
+	strPrevBwUsed, _, err = key.GetStringValue(regValue2)
+	prevBw := strBwCurrentUsed // record previous bandwidth now since this value might change a few times at runtime
+	if err != nil {
+		log.Fatalf("Error reading registry value %s, exiting program", regValue2)
+	}
 
-	bwCurrentUsed, _ = strconv.ParseFloat(sValue1, 64)
-
+	bwCurrentUsed, _ = strconv.ParseFloat(strBwCurrentUsed, 64)
 	output := calculateBandwidth()
 
 	MainWindow{
 		Title:  "Bandwidth Calculator",
-		Size:   Size{820, 170},
+		Size:   Size{820, 250},
 		Layout: VBox{},
 		Children: []Widget{
 			HSplitter{
@@ -147,7 +156,7 @@ func main() {
 				Children: []Widget{
 					TextEdit{
 						AssignTo: &resultMsgBox,
-						MinSize:  Size{800, 55},
+						MinSize:  Size{800, 130},
 						ReadOnly: true,
 						Font: Font{
 							Family:    "Ariel",
@@ -159,4 +168,6 @@ func main() {
 			},
 		},
 	}.Run()
+
+	closingFunctions(prevBw)
 }
