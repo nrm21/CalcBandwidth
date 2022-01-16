@@ -15,9 +15,10 @@ import (
 // Global vars
 var resultMsgBox *walk.TextEdit
 var bwTextBox *walk.LineEdit
-var bwCurrentUsed float64
+var bwCurrentUsed, prevBwUsed float64
+var daysLeftInMonth *float64
 var key registry.Key
-var regKey, regValue1, regValue2, strBwCurrentUsed, strPrevBwUsed string
+var regKey, regValue1, regValue2, regValue3, strBwCurrentUsed string
 
 // Returns the number of days in the month
 func calcMonthDays(month time.Month, year int) float64 {
@@ -54,13 +55,16 @@ func calculateBandwidth() string {
 	gbPerDay := bwLimitGBs / totalDaysInMonth
 	gbAllowedSoFar := math.Round(bwLimitGBs / totalDaysInMonth * (hoursSince / 24))
 	gbLeftToUse := bwLimitGBs - bwCurrentUsed
-	daysLeftInMonth := totalDaysInMonth - (hoursSince / 24)
-	gbPerDayLeft := gbLeftToUse / daysLeftInMonth
+	prevDaysLeftInMonth := *daysLeftInMonth
+	*daysLeftInMonth = totalDaysInMonth - (hoursSince / 24)
+	daysSince := *daysLeftInMonth - prevDaysLeftInMonth
+	gbPerDayLeft := gbLeftToUse / *daysLeftInMonth
+	bwDifference := bwCurrentUsed - prevBwUsed
 
-	output := fmt.Sprintf("Fractional days left in month:                      %.3f        (Days this month:  %d)\r\n", daysLeftInMonth, int(totalDaysInMonth))
-	output += fmt.Sprintf("Cumulative bandwidth allowed up to today:  %.0f GB       (Used / Left:  %.0f / %d GB)\r\n", gbAllowedSoFar, bwCurrentUsed, int(gbLeftToUse))
-	output += fmt.Sprintf("Bandwidth per day remaining:                     %.3f GB  (Daily average:  %.3f GB)\r\n", gbPerDayLeft, gbPerDay)
-	output += fmt.Sprintf("Previous Bandwidth Usage Entered:            %s GB\r\n", strPrevBwUsed)
+	output := fmt.Sprintf("Fractional days left in month:                       %.3f         (Days this month:  %d)\r\n", *daysLeftInMonth, int(totalDaysInMonth))
+	output += fmt.Sprintf("Cumulative bandwidth allowed up to today:   %.0f GB        (Used / Left:  %.0f / %d GB)\r\n", gbAllowedSoFar, bwCurrentUsed, int(gbLeftToUse))
+	output += fmt.Sprintf("Bandwidth per day remaining:                      %.3f GB   (Daily average:  %.3f GB)\r\n", gbPerDayLeft, gbPerDay)
+	output += fmt.Sprintf("Previous Bandwidth Difference and Days since:  %.0f GB        %.3f\r\n", bwDifference, daysSince)
 
 	return output
 }
@@ -94,6 +98,11 @@ func closingFunctions(prevBw string) {
 		log.Fatalf("Error writing registry value %s, exiting program", regValue2)
 	}
 
+	err = key.SetStringValue(regValue3, fmt.Sprintf("%.3f", *daysLeftInMonth))
+	if err != nil {
+		log.Fatalf("Error writing registry value %s, exiting program", regValue3)
+	}
+
 	// write the current bandwidth entered by user to bwCurrentUsed
 	key.SetStringValue(regValue1, strBwCurrentUsed)
 }
@@ -104,25 +113,36 @@ func main() {
 	regKey = `SOFTWARE\NateMorrison\CalcBandwidth`
 	regValue1 = "bwCurrentUsed"
 	regValue2 = "prevBwCurrentUsed"
+	regValue3 = "daysLeftInMonth"
+	daysLeftInMonth = new(float64)
 	var err error
 
 	key = getRegKeyValues()
+
 	strBwCurrentUsed, _, err = key.GetStringValue(regValue1)
 	if err != nil {
 		log.Fatalf("Error reading registry value %s, exiting program", regValue1)
 	}
-	strPrevBwUsed, _, err = key.GetStringValue(regValue2)
 	prevBw := strBwCurrentUsed // record previous bandwidth now since this value might change a few times at runtime
+
+	val, _, err := key.GetStringValue(regValue2)
 	if err != nil {
 		log.Fatalf("Error reading registry value %s, exiting program", regValue2)
 	}
+	prevBwUsed, _ = strconv.ParseFloat(val, 64)
+
+	val, _, err = key.GetStringValue(regValue3)
+	if err != nil {
+		log.Fatalf("Error reading registry value %s, exiting program", regValue3)
+	}
+	*daysLeftInMonth, _ = strconv.ParseFloat(val, 64)
 
 	bwCurrentUsed, _ = strconv.ParseFloat(strBwCurrentUsed, 64)
 	output := calculateBandwidth()
 
 	MainWindow{
 		Title:  "Bandwidth Calculator",
-		Size:   Size{820, 250},
+		Size:   Size{820, 220},
 		Layout: VBox{},
 		Children: []Widget{
 			HSplitter{
@@ -156,7 +176,7 @@ func main() {
 				Children: []Widget{
 					TextEdit{
 						AssignTo: &resultMsgBox,
-						MinSize:  Size{800, 130},
+						MinSize:  Size{800, 100},
 						ReadOnly: true,
 						Font: Font{
 							Family:    "Ariel",
