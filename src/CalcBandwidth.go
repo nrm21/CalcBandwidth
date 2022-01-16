@@ -77,13 +77,8 @@ func setToRegAndCalc() {
 	resultMsgBox.SetText(calculateBandwidth())
 }
 
-func main() {
-	// init some global vars
-	bwCurrentUsed = 0
-	regKey = `SOFTWARE\NateMorrison\CalcBandwidth`
-	regValue1 = "bwCurrentUsed"
-
-	// now attempt to read last known value of bwCurrentUsed from registry
+// Attempts to read last known values of program from registry (stored from last run)
+func GetRegKeyValues() registry.Key {
 	k, err := registry.OpenKey(registry.CURRENT_USER, regKey, registry.QUERY_VALUE)
 	if err != nil {
 		// key doesn't exist lets create it
@@ -99,8 +94,20 @@ func main() {
 			k.SetStringValue(regValue1, strconv.FormatFloat(bwCurrentUsed, 'f', -1, 64))
 		}
 	}
-	s, _, err := k.GetStringValue(regValue1)
-	bwCurrentUsed, _ = strconv.ParseFloat(s, 64)
+
+	return k
+}
+
+func main() {
+	// init some global vars
+	bwCurrentUsed = 0
+	regKey = `SOFTWARE\NateMorrison\CalcBandwidth`
+	regValue1 = "bwCurrentUsed"
+
+	key := GetRegKeyValues()
+	sValue1, _, _ := key.GetStringValue(regValue1)
+
+	bwCurrentUsed, _ = strconv.ParseFloat(sValue1, 64)
 
 	output := calculateBandwidth()
 
