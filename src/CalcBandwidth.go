@@ -16,7 +16,7 @@ import (
 var resultMsgBox *walk.TextEdit
 var bwTextBox *walk.LineEdit
 var bwCurrentUsed float64
-var regKey, regValue string
+var regKey, regValue1 string
 
 // Returns the number of days in the month
 func calcMonthDays(month time.Month, year int) float64 {
@@ -71,7 +71,7 @@ func setToRegAndCalc() {
 	if err != nil {
 		log.Fatalf("Unable to open key to write too")
 	} else {
-		k.SetStringValue(regValue, strconv.FormatFloat(bwCurrentUsed, 'f', -1, 64))
+		k.SetStringValue(regValue1, strconv.FormatFloat(bwCurrentUsed, 'f', -1, 64))
 	}
 
 	resultMsgBox.SetText(calculateBandwidth())
@@ -81,7 +81,7 @@ func main() {
 	// init some global vars
 	bwCurrentUsed = 0
 	regKey = `SOFTWARE\NateMorrison\CalcBandwidth`
-	regValue = "bwCurrentUsed"
+	regValue1 = "bwCurrentUsed"
 
 	// now attempt to read last known value of bwCurrentUsed from registry
 	k, err := registry.OpenKey(registry.CURRENT_USER, regKey, registry.QUERY_VALUE)
@@ -96,10 +96,10 @@ func main() {
 		if err != nil {
 			log.Fatalf("Unable to open key to write too")
 		} else {
-			k.SetStringValue(regValue, strconv.FormatFloat(bwCurrentUsed, 'f', -1, 64))
+			k.SetStringValue(regValue1, strconv.FormatFloat(bwCurrentUsed, 'f', -1, 64))
 		}
 	}
-	s, _, err := k.GetStringValue(regValue)
+	s, _, err := k.GetStringValue(regValue1)
 	bwCurrentUsed, _ = strconv.ParseFloat(s, 64)
 
 	output := calculateBandwidth()
