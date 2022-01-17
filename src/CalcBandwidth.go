@@ -52,23 +52,38 @@ func calculateBandwidth() string {
 	var bwLimitGBs float64
 	bwLimitGBs = 1229
 	// find the number of days since the first of the month (excluding today)
-	hoursSince := time.Since(time.Date(currentYear, currentMonth, 1, 0, 0, 0, 0, time.UTC)).Hours()
+	hoursSinceMonthStart := time.Since(time.Date(currentYear, currentMonth, 1, 0, 0, 0, 0, time.UTC)).Hours()
 
 	// do calcs
 	gbPerDay := bwLimitGBs / totalDaysInMonth
-	gbAllowedSoFar := math.Round(bwLimitGBs / totalDaysInMonth * (hoursSince / 24))
+	gbAllowedSoFar := math.Round(bwLimitGBs / totalDaysInMonth * (hoursSinceMonthStart / 24))
 	gbLeftToUse := bwLimitGBs - *bwCurrentUsed
-	*daysLeftInMonth = totalDaysInMonth - (hoursSince / 24)
+	*daysLeftInMonth = totalDaysInMonth - (hoursSinceMonthStart / 24)
 	gbPerDayLeft := gbLeftToUse / *daysLeftInMonth
 	bwDifference := *bwCurrentUsed - *prevBwCurrentUsed
-	daysSince := *prevDaysLeftInMonth - *daysLeftInMonth
-	dailyUsageSincePrev := bwDifference / daysSince
+
+	// find estimate for usage based on bw diff and time between last run
+	daysSinceFraction := *prevDaysLeftInMonth - *daysLeftInMonth
+	dailyUsageSincePrev := bwDifference / daysSinceFraction
+
+	// find out how many hours and minutes since we last ran the program
+	minsSincePrev := int(1440 * daysSinceFraction)
+	hoursSincePrev := (minsSincePrev - (minsSincePrev % 60)) / 60
+	minsSincePrev = minsSincePrev % 60
+
+	// now determine if showing the estimate is worth it, it's higly inaccurate if under 144 minutes (.1 of a day)
+	strDailyUsageSincePrev := ""
+	if daysSinceFraction > .1 {
+		strDailyUsageSincePrev = fmt.Sprintf("%.1f GB", dailyUsageSincePrev)
+	} else {
+		strDailyUsageSincePrev = "N/A      "
+	}
 
 	output := fmt.Sprintf("Fractional days left in month:                       %.3f         (Days this month:  %d)\r\n", *daysLeftInMonth, int(totalDaysInMonth))
 	output += fmt.Sprintf("Cumulative bandwidth allowed up to today:   %.0f GB        (Used / Left:  %.0f / %d GB)\r\n", gbAllowedSoFar, *bwCurrentUsed, int(gbLeftToUse))
 	output += fmt.Sprintf("Bandwidth per day remaining:                      %.3f GB   (Daily average:  %.3f GB)\r\n", gbPerDayLeft, gbPerDay)
 	//output += fmt.Sprintf("Previous Bandwidth Difference and Days since:  %.0f GB        %.3f\r\n", bwDifference, daysSince)
-	output += fmt.Sprintf("Daily usage estimate since last time:            %.1f GB\r\n", dailyUsageSincePrev)
+	output += fmt.Sprintf("Daily usage estimate since last time:            %s        (%d hours %d minutes ago)\r\n", strDailyUsageSincePrev, hoursSincePrev, minsSincePrev)
 
 	return output
 }
