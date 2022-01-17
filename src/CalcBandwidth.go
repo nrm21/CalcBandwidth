@@ -58,16 +58,17 @@ func calculateBandwidth() string {
 	gbPerDay := bwLimitGBs / totalDaysInMonth
 	gbAllowedSoFar := math.Round(bwLimitGBs / totalDaysInMonth * (hoursSince / 24))
 	gbLeftToUse := bwLimitGBs - *bwCurrentUsed
-	prevDaysLeftInMonth := *daysLeftInMonth
 	*daysLeftInMonth = totalDaysInMonth - (hoursSince / 24)
 	gbPerDayLeft := gbLeftToUse / *daysLeftInMonth
 	bwDifference := *bwCurrentUsed - *prevBwCurrentUsed
-	daysSince := prevDaysLeftInMonth - *daysLeftInMonth
+	daysSince := *prevDaysLeftInMonth - *daysLeftInMonth
+	dailyUsageSincePrev := bwDifference / daysSince
 
 	output := fmt.Sprintf("Fractional days left in month:                       %.3f         (Days this month:  %d)\r\n", *daysLeftInMonth, int(totalDaysInMonth))
 	output += fmt.Sprintf("Cumulative bandwidth allowed up to today:   %.0f GB        (Used / Left:  %.0f / %d GB)\r\n", gbAllowedSoFar, *bwCurrentUsed, int(gbLeftToUse))
 	output += fmt.Sprintf("Bandwidth per day remaining:                      %.3f GB   (Daily average:  %.3f GB)\r\n", gbPerDayLeft, gbPerDay)
-	output += fmt.Sprintf("Previous Bandwidth Difference and Days since:  %.0f GB        %.3f\r\n", bwDifference, daysSince)
+	//output += fmt.Sprintf("Previous Bandwidth Difference and Days since:  %.0f GB        %.3f\r\n", bwDifference, daysSince)
+	output += fmt.Sprintf("Daily usage estimate since last time:            %.1f GB\r\n", dailyUsageSincePrev)
 
 	return output
 }
