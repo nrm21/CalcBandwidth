@@ -45,6 +45,7 @@ func calcMonthDays(month time.Month, year int) float64 {
 	return days
 }
 
+// This does all the calculations that are shown on the screen and returns the string to be printed
 func calculateBandwidth() string {
 	currentYear := time.Now().UTC().Year()
 	currentMonth := time.Now().UTC().Month()
@@ -54,7 +55,6 @@ func calculateBandwidth() string {
 	// find the number of days since the first of the month (excluding today)
 	hoursSinceMonthStart := time.Since(time.Date(currentYear, currentMonth, 1, 0, 0, 0, 0, time.UTC)).Hours()
 
-	// do calcs
 	gbPerDay := bwLimitGBs / totalDaysInMonth
 	gbAllowedSoFar := math.Round(bwLimitGBs / totalDaysInMonth * (hoursSinceMonthStart / 24))
 	gbLeftToUse := bwLimitGBs - *bwCurrentUsed
@@ -82,7 +82,7 @@ func calculateBandwidth() string {
 	output := fmt.Sprintf("Fractional days left in month:                       %.3f         (Days this month:  %d)\r\n", *daysLeftInMonth, int(totalDaysInMonth))
 	output += fmt.Sprintf("Cumulative bandwidth allowed up to today:   %.0f GB        (Used / Left:  %.0f / %d GB)\r\n", gbAllowedSoFar, *bwCurrentUsed, int(gbLeftToUse))
 	output += fmt.Sprintf("Bandwidth per day remaining:                      %.3f GB   (Daily average:  %.3f GB)\r\n", gbPerDayLeft, gbPerDay)
-	//output += fmt.Sprintf("Previous Bandwidth Difference and Days since:  %.0f GB        %.3f\r\n", bwDifference, daysSince)
+	//output += fmt.Sprintf("Previous Bandwidth Difference and Days since:  %.0f GB        %.3f\r\n", bwDifference, timeSinceFraction)
 	output += fmt.Sprintf("Daily usage estimate since last time:            %s        (%d hours %d minutes ago)\r\n", strDailyUsageSincePrev, hoursSincePrev, minsSincePrev)
 
 	return output
@@ -96,7 +96,7 @@ func setToRegAndCalc() {
 
 // Attempts to read last known values of program from registry (stored from last run)
 func getRegKeyValues() registry.Key {
-	// key doesn't exist lets create it
+	// attempt to create key (won't delete if existing)
 	k, exists, err := registry.CreateKey(registry.CURRENT_USER, regKeyBranch, registry.QUERY_VALUE|registry.SET_VALUE)
 	if err != nil {
 		log.Fatalf("Error creating registry key, exiting program")
@@ -108,25 +108,20 @@ func getRegKeyValues() registry.Key {
 	return k
 }
 
-// Thigs to do just before exit
+// Attempts to write a value to a registry string
+func setSingleRegKeyValue(regName, regValue string) {
+	err := key.SetStringValue(regName, regValue)
+	if err != nil {
+		log.Fatalf("Error writing registry value %s, exiting program", regName)
+	}
+}
+
+// Things to perform just before exit
 func closingFunctions() {
-	// write all settings to registry for next run
-	key.SetStringValue(regValue1, fmt.Sprintf("%.0f", *bwCurrentUsed))
-
-	err := key.SetStringValue(regValue2, fmt.Sprintf("%.0f", *prevBwAtProgStart))
-	if err != nil {
-		log.Fatalf("Error writing registry value %s, exiting program", regValue2)
-	}
-
-	err = key.SetStringValue(regValue3, fmt.Sprintf("%.4f", *daysLeftInMonth))
-	if err != nil {
-		log.Fatalf("Error writing registry value %s, exiting program", regValue3)
-	}
-
-	err = key.SetStringValue(regValue4, fmt.Sprintf("%.4f", *prevDaysAtProgStart))
-	if err != nil {
-		log.Fatalf("Error writing registry value %s, exiting program", regValue4)
-	}
+	setSingleRegKeyValue(regValue1, fmt.Sprintf("%.0f", *bwCurrentUsed))
+	setSingleRegKeyValue(regValue2, fmt.Sprintf("%.0f", *prevBwAtProgStart))
+	setSingleRegKeyValue(regValue3, fmt.Sprintf("%.4f", *daysLeftInMonth))
+	setSingleRegKeyValue(regValue4, fmt.Sprintf("%.4f", *prevDaysAtProgStart))
 }
 
 // Get a string value from the registry
