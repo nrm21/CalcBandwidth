@@ -60,9 +60,9 @@ func calculateBandwidth() string {
 	gbLeftToUse := bwLimitGBs - *bwCurrentUsed
 	*daysLeftInMonth = totalDaysInMonth - (hoursSinceMonthStart / 24)
 	gbPerDayLeft := gbLeftToUse / *daysLeftInMonth
-	bwDifference := *bwCurrentUsed - *prevBwCurrentUsed
 
 	// find estimate for usage based on bw diff and time between last run
+	bwDifference := *bwCurrentUsed - *prevBwAtProgStart
 	timeSinceFraction := *prevDaysLeftInMonth - *daysLeftInMonth
 	dailyUsageSincePrev := bwDifference / timeSinceFraction
 
