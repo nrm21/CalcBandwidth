@@ -22,7 +22,7 @@ const regValue4 = "prevDaysLeftInMonth"
 var resultMsgBox *walk.TextEdit
 var bwTextBox *walk.LineEdit
 var key *registry.Key
-var bwCurrentUsed, prevBwCurrentUsed, daysLeftInMonth, prevDaysLeftInMonth *float64
+var bwCurrentUsed, prevBwCurrentUsed, daysLeftInMonth, prevDaysLeftInMonth, prevBwAtProgStart, prevDaysAtProgStart *float64
 
 // Returns the number of days in the month
 func calcMonthDays(month time.Month, year int) float64 {
@@ -63,17 +63,17 @@ func calculateBandwidth() string {
 	bwDifference := *bwCurrentUsed - *prevBwCurrentUsed
 
 	// find estimate for usage based on bw diff and time between last run
-	daysSinceFraction := *prevDaysLeftInMonth - *daysLeftInMonth
-	dailyUsageSincePrev := bwDifference / daysSinceFraction
+	timeSinceFraction := *prevDaysLeftInMonth - *daysLeftInMonth
+	dailyUsageSincePrev := bwDifference / timeSinceFraction
 
 	// find out how many hours and minutes since we last ran the program
-	minsSincePrev := int(1440 * daysSinceFraction)
+	minsSincePrev := int(1440 * (*prevDaysAtProgStart - *daysLeftInMonth))
 	hoursSincePrev := (minsSincePrev - (minsSincePrev % 60)) / 60
 	minsSincePrev = minsSincePrev % 60
 
 	// now determine if showing the estimate is worth it, it's higly inaccurate if under 144 minutes (.1 of a day)
 	strDailyUsageSincePrev := ""
-	if daysSinceFraction > .1 {
+	if timeSinceFraction > .1 {
 		strDailyUsageSincePrev = fmt.Sprintf("%.1f GB", dailyUsageSincePrev)
 	} else {
 		strDailyUsageSincePrev = "N/A      "
@@ -109,21 +109,21 @@ func getRegKeyValues() registry.Key {
 }
 
 // Thigs to do just before exit
-func closingFunctions(prevBwAtProgStart, prevDaysAtProgStart string) {
+func closingFunctions() {
 	// write all settings to registry for next run
 	key.SetStringValue(regValue1, fmt.Sprintf("%.0f", *bwCurrentUsed))
 
-	err := key.SetStringValue(regValue2, prevBwAtProgStart)
+	err := key.SetStringValue(regValue2, fmt.Sprintf("%.0f", *prevBwAtProgStart))
 	if err != nil {
 		log.Fatalf("Error writing registry value %s, exiting program", regValue2)
 	}
 
-	err = key.SetStringValue(regValue3, fmt.Sprintf("%.3f", *daysLeftInMonth))
+	err = key.SetStringValue(regValue3, fmt.Sprintf("%.4f", *daysLeftInMonth))
 	if err != nil {
 		log.Fatalf("Error writing registry value %s, exiting program", regValue3)
 	}
 
-	err = key.SetStringValue(regValue4, prevDaysAtProgStart)
+	err = key.SetStringValue(regValue4, fmt.Sprintf("%.4f", *prevDaysAtProgStart))
 	if err != nil {
 		log.Fatalf("Error writing registry value %s, exiting program", regValue4)
 	}
@@ -150,8 +150,9 @@ func main() {
 	*prevDaysLeftInMonth, _ = strconv.ParseFloat(GetRegStringValue(regValue4), 64)
 
 	// record previous settings now since these values might change a few times at runtime
-	prevBwAtProgStart := fmt.Sprintf("%.0f", *bwCurrentUsed)
-	prevDaysAtProgStart := fmt.Sprintf("%.3f", *daysLeftInMonth)
+	prevBwAtProgStart, prevDaysAtProgStart = new(float64), new(float64)
+	*prevBwAtProgStart = *bwCurrentUsed     // copy value of point into new pointer, NOT point to the same object (since that num will change)
+	*prevDaysAtProgStart = *daysLeftInMonth // copy value of point into new pointer, NOT point to the same object (since that num will change)
 
 	output := calculateBandwidth()
 
@@ -204,5 +205,5 @@ func main() {
 		},
 	}.Run()
 
-	closingFunctions(prevBwAtProgStart, prevDaysAtProgStart)
+	closingFunctions()
 }
