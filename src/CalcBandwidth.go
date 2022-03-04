@@ -17,10 +17,14 @@ const regValue1 = "bwCurrentUsed"
 const regValue2 = "prevBwCurrentUsed"
 const regValue3 = "daysLeftInMonth"
 const regValue4 = "prevDaysLeftInMonth"
+const initialWinWidth = 920
+const initialWinHeight = 200
 
 // Global pointers
+var mainWin *walk.MainWindow
 var resultMsgBox *walk.TextEdit
 var bwTextBox *walk.LineEdit
+var pushButton *walk.PushButton
 var key *registry.Key
 var bwCurrentUsed, prevBwCurrentUsed, daysLeftInMonth, prevDaysLeftInMonth, prevBwAtProgStart, prevDaysAtProgStart *float64
 
@@ -79,9 +83,9 @@ func calculateBandwidth() string {
 		strDailyUsageSincePrev = "N/A      "
 	}
 
-	output := fmt.Sprintf("Fractional days left in month:                       %.3f         (Days this month:  %d)\r\n", *daysLeftInMonth, int(totalDaysInMonth))
+	output := fmt.Sprintf("Fractional days left in month:                         %.3f         (Days this month:  %d)\r\n", *daysLeftInMonth, int(totalDaysInMonth))
 	output += fmt.Sprintf("Cumulative bandwidth allowed up to today:   %.0f GB        (Used / Left:  %.0f / %d GB)\r\n", gbAllowedSoFar, *bwCurrentUsed, int(gbLeftToUse))
-	output += fmt.Sprintf("Bandwidth per day remaining:                      %.3f GB   (Daily average:  %.3f GB)\r\n", gbPerDayLeft, gbPerDay)
+	output += fmt.Sprintf("Bandwidth per day remaining:                        %.3f GB  (Daily average:  %.3f GB)\r\n", gbPerDayLeft, gbPerDay)
 	//output += fmt.Sprintf("Previous Bandwidth Difference and Days since:  %.0f GB        %.3f\r\n", bwDifference, timeSinceFraction)
 	output += fmt.Sprintf("Daily usage estimate since last time:            %s        (%d hours %d minutes ago)\r\n", strDailyUsageSincePrev, hoursSincePrev, minsSincePrev)
 
@@ -146,22 +150,26 @@ func main() {
 
 	// record previous settings now since these values might change a few times at runtime
 	prevBwAtProgStart, prevDaysAtProgStart = new(float64), new(float64)
-	*prevBwAtProgStart = *bwCurrentUsed     // copy value of point into new pointer, NOT point to the same object (since that num will change)
-	*prevDaysAtProgStart = *daysLeftInMonth // copy value of point into new pointer, NOT point to the same object (since that num will change)
-
-	output := calculateBandwidth()
+	*prevBwAtProgStart = *bwCurrentUsed     // copy value of pointer into new pointer, NOT point to the same object (since that num will change)
+	*prevDaysAtProgStart = *daysLeftInMonth // copy value of pointer into new pointer, NOT point to the same object (since that num will change)
 
 	MainWindow{
-		Title:  "Bandwidth Calculator",
-		Size:   Size{820, 220},
-		Layout: VBox{},
+		AssignTo: &mainWin,
+		Title:    "Bandwidth Calculator",
+		Size:     Size{initialWinWidth, initialWinHeight},
+		MinSize:  Size{500, 200},
+		Layout:   VBox{},
 		Children: []Widget{
 			HSplitter{
 				Children: []Widget{
 					ScrollView{
-						Layout: HBox{MarginsZero: true},
+						Layout: HBox{
+							MarginsZero: true,
+						},
 						Children: []Widget{
-							Label{Text: "Bandwidth Used:"},
+							Label{
+								Text: "Bandwidth Used:",
+							},
 							LineEdit{
 								AssignTo: &bwTextBox,
 								Text:     strconv.FormatFloat(*bwCurrentUsed, 'f', -1, 64),
@@ -172,9 +180,8 @@ func main() {
 								},
 							},
 							PushButton{
-								MinSize: Size{150, 20},
-								MaxSize: Size{150, 20},
-								Text:    "Press to calculate",
+								AssignTo: &pushButton,
+								Text:     "        Press to calculate        ",
 								OnClicked: func() {
 									go setToRegAndCalc()
 								},
@@ -187,13 +194,16 @@ func main() {
 				Children: []Widget{
 					TextEdit{
 						AssignTo: &resultMsgBox,
-						MinSize:  Size{800, 100},
+						MinSize:  Size{initialWinWidth / 2, initialWinHeight - 115},
 						ReadOnly: true,
 						Font: Font{
 							Family:    "Ariel",
-							PointSize: 15,
+							PointSize: 17,
 						},
-						Text: output,
+						Text: calculateBandwidth(),
+						OnBoundsChanged: func() {
+							resultMsgBox.SetWidth(mainWin.Width() - 35)
+						},
 					},
 				},
 			},
