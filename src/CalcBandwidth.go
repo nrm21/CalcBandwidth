@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/lxn/walk"
@@ -92,10 +93,16 @@ func calculateBandwidth() string {
 	return output
 }
 
+// Calculates and outputs the necessary text to populate the main window
 func setToRegAndCalc() {
-	*bwCurrentUsed, _ = strconv.ParseFloat(bwTextBox.Text(), 64)
-
-	resultMsgBox.SetText(calculateBandwidth())
+	var err error
+	numWithoutSpace := strings.TrimSpace(bwTextBox.Text())
+	*bwCurrentUsed, err = strconv.ParseFloat(numWithoutSpace, 64)
+	if err != nil {
+		log.Println("Invalid characters detected, please use integers only")
+	} else {
+		resultMsgBox.SetText(calculateBandwidth())
+	}
 }
 
 // Attempts to read last known values of program from registry (stored from last run)
