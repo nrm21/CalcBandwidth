@@ -18,8 +18,8 @@ const regValue1 = "bwCurrentUsed"
 const regValue2 = "prevBwCurrentUsed"
 const regValue3 = "daysLeftInMonth"
 const regValue4 = "prevDaysLeftInMonth"
-const initialWinWidth = 920
-const initialWinHeight = 200
+const initialWinWidth = 975
+const initialWinHeight = 175
 
 // Global pointers
 var mainWin *walk.MainWindow
@@ -65,30 +65,32 @@ func calculateBandwidth() string {
 	gbLeftToUse := bwLimitGBs - *bwCurrentUsed
 	*daysLeftInMonth = totalDaysInMonth - (hoursSinceMonthStart / 24)
 	gbPerDayLeft := gbLeftToUse / *daysLeftInMonth
+	bwDifferential := gbAllowedSoFar - *bwCurrentUsed
 
 	// find estimate for usage based on bw diff and time between last run
-	bwDifference := *bwCurrentUsed - *prevBwAtProgStart
-	timeSinceFraction := *prevDaysLeftInMonth - *daysLeftInMonth
-	dailyUsageSincePrev := bwDifference / timeSinceFraction
+	// bwDifference := *bwCurrentUsed - *prevBwAtProgStart
+	// timeSinceFraction := *prevDaysLeftInMonth - *daysLeftInMonth
 
 	// find out how many hours and minutes since we last ran the program
-	minsSincePrev := int(1440 * (*prevDaysAtProgStart - *daysLeftInMonth))
-	hoursSincePrev := (minsSincePrev - (minsSincePrev % 60)) / 60
-	minsSincePrev = minsSincePrev % 60
+	// minsSincePrev := int(1440 * (*prevDaysAtProgStart - *daysLeftInMonth))
+	// hoursSincePrev := (minsSincePrev - (minsSincePrev % 60)) / 60
+	// minsSincePrev = minsSincePrev % 60
 
 	// now determine if showing the estimate is worth it, it's higly inaccurate if under 144 minutes (.1 of a day)
-	strDailyUsageSincePrev := ""
-	if timeSinceFraction > .1 {
-		strDailyUsageSincePrev = fmt.Sprintf("%.1f GB", dailyUsageSincePrev)
-	} else {
-		strDailyUsageSincePrev = "N/A      "
-	}
+	// dailyUsageSincePrev := bwDifference / timeSinceFraction
+	// strDailyUsageSincePrev := ""
+	// if timeSinceFraction > .1 {
+	// 	strDailyUsageSincePrev = fmt.Sprintf("%.1f GB", dailyUsageSincePrev)
+	// } else {
+	// 	strDailyUsageSincePrev = "N/A      "
+	// }
 
-	output := fmt.Sprintf("Fractional days left in month:                         %.3f         (Days this month:  %d)\r\n", *daysLeftInMonth, int(totalDaysInMonth))
-	output += fmt.Sprintf("Cumulative bandwidth allowed up to today:   %.0f GB        (Used / Left:  %.0f / %d GB)\r\n", gbAllowedSoFar, *bwCurrentUsed, int(gbLeftToUse))
-	output += fmt.Sprintf("Bandwidth per day remaining:                        %.3f GB  (Daily average:  %.3f GB)\r\n", gbPerDayLeft, gbPerDay)
-	//output += fmt.Sprintf("Previous Bandwidth Difference and Days since:  %.0f GB        %.3f\r\n", bwDifference, timeSinceFraction)
-	output += fmt.Sprintf("Daily usage estimate since last time:            %s        (%d hours %d minutes ago)\r\n", strDailyUsageSincePrev, hoursSincePrev, minsSincePrev)
+	output := fmt.Sprintf("Fractional days left in month:      %.3f         (Days this month:  %d)\r\n", *daysLeftInMonth, int(totalDaysInMonth))
+	output += fmt.Sprintf("Bandwidth allowed up to today:   %.0f GB        (Used / Differential / Left:  %.0f / %.0f / %d GB)\r\n",
+		gbAllowedSoFar, *bwCurrentUsed, bwDifferential, int(gbLeftToUse))
+	output += fmt.Sprintf("Bandwidth per day remaining:     %.3f GB  (Daily average:  %.3f GB)\r\n", gbPerDayLeft, gbPerDay)
+	// output += fmt.Sprintf("Previous Bandwidth Difference and Days since:  %.0f GB        %.3f\r\n", bwDifference, timeSinceFraction)
+	// output += fmt.Sprintf("Usage estimate since last time:  %s        (%d hours %d minutes ago)\r\n", strDailyUsageSincePrev, hoursSincePrev, minsSincePrev)
 
 	return output
 }
@@ -164,7 +166,7 @@ func main() {
 		AssignTo: &mainWin,
 		Title:    "Bandwidth Calculator",
 		Size:     Size{initialWinWidth, initialWinHeight},
-		MinSize:  Size{500, 200},
+		MinSize:  Size{initialWinWidth, initialWinHeight},
 		Layout:   VBox{},
 		Children: []Widget{
 			HSplitter{
