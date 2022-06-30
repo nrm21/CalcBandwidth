@@ -12,9 +12,7 @@ import (
 
 const regKeyBranch = `SOFTWARE\NateMorrison\CalcBandwidth`
 const regValue1 = "bwCurrentUsed"
-const regValue2 = "prevBwCurrentUsed"
-const regValue3 = "daysLeftInMonth"
-const regValue4 = "prevDaysLeftInMonth"
+const regValue2 = "daysLeftInMonth"
 const initialWinWidth = 975
 const initialWinHeight = 175
 
@@ -25,8 +23,9 @@ var resultMsgBox *walk.TextEdit
 var bwTextBox *walk.LineEdit
 var pushButton *walk.PushButton
 var key *registry.Key
-var bwCurrentUsed, prevBwCurrentUsed, daysLeftInMonth,
-	prevDaysLeftInMonth, prevBwAtProgStart, prevDaysAtProgStart float64
+var bwCurrentUsed, daysLeftInMonth float64
+
+// var prevBwAtProgStart, prevDaysAtProgStart float64
 
 func main() {
 	var config Config
@@ -43,21 +42,17 @@ func main() {
 		config, _ = getConfigContentsFromYaml(exePath + "\\config.yml")
 		etcdValues, _ := myetcd.ReadFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints, config.Etcd.BaseKeyToWrite)
 		bwCurrentUsed, _ = strconv.ParseFloat(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue1], 64)
-		prevBwCurrentUsed, _ = strconv.ParseFloat(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue2], 64)
-		daysLeftInMonth, _ = strconv.ParseFloat(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue3], 64)
-		prevDaysLeftInMonth, _ = strconv.ParseFloat(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue4], 64)
+		daysLeftInMonth, _ = strconv.ParseFloat(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue2], 64)
 	} else {
 		key = new(registry.Key)
 		*key = getRegKeyValues()
 		bwCurrentUsed, _ = strconv.ParseFloat(GetRegStringValue(regValue1), 64)
-		prevBwCurrentUsed, _ = strconv.ParseFloat(GetRegStringValue(regValue2), 64)
-		daysLeftInMonth, _ = strconv.ParseFloat(GetRegStringValue(regValue3), 64)
-		prevDaysLeftInMonth, _ = strconv.ParseFloat(GetRegStringValue(regValue4), 64)
+		daysLeftInMonth, _ = strconv.ParseFloat(GetRegStringValue(regValue2), 64)
 	}
 
 	// record previous settings now since these values might change a few times at runtime
-	prevBwAtProgStart = bwCurrentUsed
-	prevDaysAtProgStart = daysLeftInMonth
+	// prevBwAtProgStart = bwCurrentUsed
+	// prevDaysAtProgStart = daysLeftInMonth
 
 	MainWindow{
 		AssignTo: &mainWin,
