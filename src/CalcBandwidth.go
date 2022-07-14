@@ -13,7 +13,7 @@ import (
 const regKeyBranch = `SOFTWARE\NateMorrison\CalcBandwidth`
 const regValue1 = "bwCurrentUsed"
 const regValue2 = "bwPerDayRemaining"
-const regValue3 = "daysLeftInMonth"
+const regValue3 = "dayOfMonth"
 const initialWinWidth = 975
 const initialWinHeight = 175
 
@@ -24,7 +24,8 @@ var resultMsgBox *walk.TextEdit
 var bwTextBox *walk.LineEdit
 var pushButton *walk.PushButton
 var key *registry.Key
-var bwCurrentUsed, daysLeftInMonth, gbPerDayLeft float64
+var bwCurrentUsed, gbPerDayLeft float64
+var dayOfMonth int
 
 func main() {
 	var config Config
@@ -41,14 +42,10 @@ func main() {
 		config, _ = getConfigContentsFromYaml(exePath + "\\config.yml")
 		etcdValues, _ := myetcd.ReadFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints, config.Etcd.BaseKeyToWrite)
 		bwCurrentUsed, _ = strconv.ParseFloat(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue1], 64)
-		// gbPerDayLeft, _ = strconv.ParseFloat(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue2], 64) // this one is auto calc'ed
-		daysLeftInMonth, _ = strconv.ParseFloat(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue3], 64)
 	} else {
 		key = new(registry.Key)
 		*key = getRegKeyValues()
 		bwCurrentUsed, _ = strconv.ParseFloat(GetRegStringValue(regValue1), 64)
-		// gbPerDayLeft, _ = strconv.ParseFloat(GetRegStringValue(regValue2), 64) // this one is auto calc'ed
-		daysLeftInMonth, _ = strconv.ParseFloat(GetRegStringValue(regValue3), 64)
 	}
 
 	MainWindow{

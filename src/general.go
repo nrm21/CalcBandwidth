@@ -75,7 +75,7 @@ func calculateBandwidth() string {
 	gbPerDay := bwLimitGBs / totalDaysInMonth
 	gbAllowedSoFar := math.Round(bwLimitGBs / totalDaysInMonth * (hoursSinceMonthStart / 24))
 	gbLeftToUse := bwLimitGBs - bwCurrentUsed
-	daysLeftInMonth = totalDaysInMonth - (hoursSinceMonthStart / 24)
+	daysLeftInMonth := totalDaysInMonth - (hoursSinceMonthStart / 24)
 	gbPerDayLeft = gbLeftToUse / daysLeftInMonth
 	bwDifferential := gbAllowedSoFar - bwCurrentUsed
 
@@ -147,15 +147,17 @@ func testSockConnect(host string, port string) bool {
 func closingFunctions(config *Config) {
 	// do closing writes to DB
 	if doEtcd {
+		dayOfMonth = time.Now().UTC().Day()
+
 		myetcd.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
 			config.Etcd.BaseKeyToWrite+"/"+regValue1, fmt.Sprintf("%.0f", bwCurrentUsed))
 		myetcd.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
 			config.Etcd.BaseKeyToWrite+"/"+regValue2, fmt.Sprintf("%.3f", gbPerDayLeft))
 		myetcd.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
-			config.Etcd.BaseKeyToWrite+"/"+regValue3, fmt.Sprintf("%.3f", daysLeftInMonth))
+			config.Etcd.BaseKeyToWrite+"/"+regValue3+"/"+
+				fmt.Sprintf("%d", dayOfMonth), fmt.Sprintf("%.3f", gbPerDayLeft))
 	} else {
 		setSingleRegKeyValue(regValue1, fmt.Sprintf("%.0f", bwCurrentUsed))
 		setSingleRegKeyValue(regValue2, fmt.Sprintf("%.3f", gbPerDayLeft))
-		setSingleRegKeyValue(regValue3, fmt.Sprintf("%.3f", daysLeftInMonth))
 	}
 }
