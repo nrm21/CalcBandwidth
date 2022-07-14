@@ -1,0 +1,9 @@
+etcd:
+  endpoints:
+    - 10.150.30.17:2379
+    - 10.150.30.18:2379
+    - 10.150.30.19:2379
+  baseKeyToWrite: /nate/CalcBandwidth
+  timeout:        5
+  sleepSeconds:   30   # var not used currently
+  certpath:       E:\Documents\_Nate\Personal Identification\Etcd Certs
