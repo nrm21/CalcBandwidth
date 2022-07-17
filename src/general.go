@@ -66,11 +66,11 @@ func calcMonthDays(month time.Month, year int) float64 {
 // This does all the calculations that are shown on the screen and returns the string to be printed
 func calculateBandwidth() string {
 	const bwLimitGBs float64 = 1229
-	currentYear := time.Now().UTC().Year()
-	currentMonth := time.Now().UTC().Month()
+	currentYear := time.Now().Year()
+	currentMonth := time.Now().Month()
 
 	// find the number of days since the first of the month (excluding today)
-	hoursSinceMonthStart := time.Since(time.Date(currentYear, currentMonth, 1, 0, 0, 0, 0, time.UTC)).Hours()
+	hoursSinceMonthStart := time.Since(time.Date(currentYear, currentMonth, 1, 0, 0, 0, 0, time.Local)).Hours()
 	totalDaysInMonth := calcMonthDays(currentMonth, currentYear)
 	gbPerDay := bwLimitGBs / totalDaysInMonth
 	gbAllowedSoFar := math.Round(bwLimitGBs / totalDaysInMonth * (hoursSinceMonthStart / 24))
@@ -147,7 +147,7 @@ func testSockConnect(host string, port string) bool {
 func closingFunctions(config *Config) {
 	// do closing writes to DB
 	if doEtcd {
-		dayOfMonth = time.Now().UTC().Day()
+		dayOfMonth = time.Now().Day()
 
 		myetcd.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
 			config.Etcd.BaseKeyToWrite+"/"+regValue1, fmt.Sprintf("%.0f", bwCurrentUsed))
