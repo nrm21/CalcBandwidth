@@ -6,10 +6,12 @@ import (
 	"log"
 	"math"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/lxn/walk"
 	"github.com/nrm21/support"
 	"golang.org/x/sys/windows/registry"
 	"gopkg.in/yaml.v2"
@@ -79,7 +81,8 @@ func calculateBandwidth() string {
 	gbPerDayLeft = gbLeftToUse / daysLeftInMonth
 	bwDifferential := gbAllowedSoFar - bwCurrentUsed
 
-	output := fmt.Sprintf("Fractional days left in month:      %.3f         (Days this month:  %d)\r\n", daysLeftInMonth, int(totalDaysInMonth))
+	output := fmt.Sprintf("Fractional days left in month:      %.3f         (Days this month:  %d)\r\n",
+		daysLeftInMonth, int(totalDaysInMonth))
 	output += fmt.Sprintf("Bandwidth allowed up to today:   %.0f GB    (Used / Differential / Left:  %.0f / %.0f / %d GB)\r\n",
 		gbAllowedSoFar, bwCurrentUsed, bwDifferential, int(gbLeftToUse))
 	output += fmt.Sprintf("Bandwidth per day remaining:     %.3f GB  (Daily average:  %.3f GB)\r\n", gbPerDayLeft, gbPerDay)
@@ -131,31 +134,62 @@ func GetRegStringValue(regStr string) string {
 	return value
 }
 
+// Things to perform before showing GUI
+func getConfigAndDBValues(config *Config) {
+	useEtcd = false
+	if testSockConnect("10.150.30.18", "2379") { // etcd exists lets use that for settings
+		useEtcd = true
+
+		exePath, _ := os.Getwd()
+		if exePath[len(exePath)-4:] == "\\src" || exePath[len(exePath)-4:] == "\\bin" {
+			exePath = exePath[:len(exePath)-4]
+		}
+
+		*config, _ = getConfigContentsFromYaml(exePath + "\\config.yml")
+		etcdValues, _ := myetcd.ReadFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints, config.Etcd.BaseKeyToWrite)
+		bwCurrentUsed, _ = strconv.ParseFloat(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue1], 64)
+
+		// Delete all daily data if we are in new month
+		dbMonth, _ := strconv.ParseInt(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue4], 10, 64)
+		if dbMonth != int64(time.Now().Month()) {
+			// Have a msg box here notifying the user of deleting keys
+			walk.MsgBox(nil, "Info", "New month, will delete all daily keys now", walk.MsgBoxIconInformation)
+
+			myetcd.DeleteFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
+				config.Etcd.BaseKeyToWrite+"/"+regValue3)
+		}
+
+	} else { // etcd doesnt appear to exist lets use registry for settings
+		key = new(registry.Key)
+		*key = getRegKeyValues()
+		bwCurrentUsed, _ = strconv.ParseFloat(GetRegStringValue(regValue1), 64)
+	}
+}
+
 // Checks a socket connection and returns bool of if open or not
 func testSockConnect(host string, port string) bool {
 	conn, _ := net.DialTimeout("tcp", net.JoinHostPort(host, port), 500*time.Millisecond)
 	if conn != nil {
 		defer conn.Close()
-
 		return true
 	} else {
 		return false
 	}
 }
 
-// Things to perform just before exit
-func closingFunctions(config *Config) {
+// Writes the final values to Etcd before exiting
+func writeClosingValuesToDB(config *Config) {
 	// do closing writes to DB
-	if doEtcd {
-		dayOfMonth = time.Now().Day()
-
+	if useEtcd {
 		myetcd.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
 			config.Etcd.BaseKeyToWrite+"/"+regValue1, fmt.Sprintf("%.0f", bwCurrentUsed))
 		myetcd.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
 			config.Etcd.BaseKeyToWrite+"/"+regValue2, fmt.Sprintf("%.3f", gbPerDayLeft))
 		myetcd.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
 			config.Etcd.BaseKeyToWrite+"/"+regValue3+"/"+
-				fmt.Sprintf("%d", dayOfMonth), fmt.Sprintf("%.3f", gbPerDayLeft))
+				fmt.Sprintf("%d", time.Now().Day()), fmt.Sprintf("%.3f", gbPerDayLeft))
+		myetcd.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
+			config.Etcd.BaseKeyToWrite+"/"+regValue4, fmt.Sprintf("%d", int(time.Now().Month())))
 	} else {
 		setSingleRegKeyValue(regValue1, fmt.Sprintf("%.0f", bwCurrentUsed))
 		setSingleRegKeyValue(regValue2, fmt.Sprintf("%.3f", gbPerDayLeft))

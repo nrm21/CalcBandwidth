@@ -56,8 +56,8 @@ func ReadFromEtcd(certPath *string, endpoints *[]string, keyToRead string) (map[
 	return answer, nil
 }
 
-// WriteToEtcd writes once to a given key in etcd
-func WriteToEtcd(certPath *string, endpoints *[]string, keyToWrite string, valueToWrite string) {
+// WriteToEtcd writes once to a given key in etcd, returns nil of no error
+func WriteToEtcd(certPath *string, endpoints *[]string, keyToWrite string, valueToWrite string) error {
 	cli := connToEtcd(certPath, endpoints)
 	defer cli.Close()
 
@@ -66,8 +66,10 @@ func WriteToEtcd(certPath *string, endpoints *[]string, keyToWrite string, value
 
 	_, err := cli.Put(ctx, keyToWrite, valueToWrite)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+
+	return nil
 }
 
 // Deletes the given key from etcd and returns the amount deleted
@@ -81,7 +83,7 @@ func DeleteFromEtcd(certPath *string, endpoints *[]string, keyToDelete string) i
 
 	response, err := cli.Delete(ctx, keyToDelete)
 	if err != nil {
-		log.Fatal(err)
+		return 0
 	}
 
 	return response.Deleted

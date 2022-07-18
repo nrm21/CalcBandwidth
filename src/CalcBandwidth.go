@@ -1,8 +1,6 @@
 package main
 
 import (
-	"_nate/CalcBandwidth/src/myetcd"
-	"os"
 	"strconv"
 
 	"github.com/lxn/walk"
@@ -14,11 +12,12 @@ const regKeyBranch = `SOFTWARE\NateMorrison\CalcBandwidth`
 const regValue1 = "bwCurrentUsed"
 const regValue2 = "bwPerDayRemaining"
 const regValue3 = "dayOfMonth"
+const regValue4 = "monthOfYear"
 const initialWinWidth = 975
 const initialWinHeight = 175
 
 // Global pointers
-var doEtcd bool
+var useEtcd bool
 var mainWin *walk.MainWindow
 var resultMsgBox *walk.TextEdit
 var bwTextBox *walk.LineEdit
@@ -29,24 +28,7 @@ var dayOfMonth int
 
 func main() {
 	var config Config
-	doEtcd = false
-
-	if testSockConnect("10.150.30.18", "2379") {
-		doEtcd = true
-
-		exePath, _ := os.Getwd()
-		if exePath[len(exePath)-4:] == "\\src" || exePath[len(exePath)-4:] == "\\bin" {
-			exePath = exePath[:len(exePath)-4]
-		}
-
-		config, _ = getConfigContentsFromYaml(exePath + "\\config.yml")
-		etcdValues, _ := myetcd.ReadFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints, config.Etcd.BaseKeyToWrite)
-		bwCurrentUsed, _ = strconv.ParseFloat(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue1], 64)
-	} else {
-		key = new(registry.Key)
-		*key = getRegKeyValues()
-		bwCurrentUsed, _ = strconv.ParseFloat(GetRegStringValue(regValue1), 64)
-	}
+	getConfigAndDBValues(&config)
 
 	MainWindow{
 		AssignTo: &mainWin,
@@ -105,5 +87,5 @@ func main() {
 		},
 	}.Run()
 
-	closingFunctions(&config)
+	writeClosingValuesToDB(&config)
 }
