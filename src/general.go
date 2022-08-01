@@ -155,8 +155,15 @@ func getConfigAndDBValues(config *Config) {
 			// Have a msg box here notifying the user of deleting keys
 			walk.MsgBox(nil, "Info", "New month, will delete all daily keys now", walk.MsgBoxIconInformation)
 
-			myetcd.DeleteFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
-				config.Etcd.BaseKeyToWrite+"/"+regValue3)
+			// If key for the first day of month exists, we should assume all days do
+			// and delete all 31 days one by one (silent error for days that don't exist)
+			dayOfMonthSubkey := config.Etcd.BaseKeyToWrite + "/" + regValue3
+			if _, ok := etcdValues[dayOfMonthSubkey+"/1"]; ok {
+				for day := 1; day <= 31; day++ {
+					myetcd.DeleteFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
+						dayOfMonthSubkey+"/"+fmt.Sprint(day))
+				}
+			}
 		}
 
 	} else { // etcd doesnt appear to exist lets use registry for settings
