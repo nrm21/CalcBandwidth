@@ -6,4 +6,4 @@ etcd:
   baseKeyToWrite: /nate/CalcBandwidth
   timeout:        5
   sleepSeconds:   30   # var not used currently
-  certpath:       E:\Documents\_Nate\Personal Identification\Etcd Certs
+  certpath:       E:\Documents\_Nate\Computer Related\Private keys\Etcd Certs

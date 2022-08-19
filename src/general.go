@@ -2,6 +2,7 @@ package main
 
 import (
 	"_nate/CalcBandwidth/src/myetcd"
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -137,7 +138,7 @@ func GetRegStringValue(regStr string) string {
 // Things to perform before showing GUI
 func getConfigAndDBValues(config *Config) {
 	useEtcd = false
-	if testSockConnect("10.150.30.18", "2379") { // etcd exists lets use that for settings
+	if testSockConnect("10.150.30.19", "2379") { // etcd exists lets use that for settings
 		useEtcd = true
 
 		exePath, _ := os.Getwd()
@@ -146,6 +147,12 @@ func getConfigAndDBValues(config *Config) {
 		}
 
 		*config, _ = getConfigContentsFromYaml(exePath + "\\config.yml")
+
+		// if the cert path doesnt exist
+		if _, err := os.Stat(config.Etcd.CertPath); errors.Is(err, os.ErrNotExist) {
+			walk.MsgBox(nil, "Fatal Error", "Fatal: "+err.Error(), walk.MsgBoxIconError)
+		}
+
 		etcdValues, _ := myetcd.ReadFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints, config.Etcd.BaseKeyToWrite)
 		bwCurrentUsed, _ = strconv.ParseFloat(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue1], 64)
 
