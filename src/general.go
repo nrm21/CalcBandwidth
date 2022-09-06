@@ -190,20 +190,28 @@ func testSockConnect(host string, port string) bool {
 	}
 }
 
-// Writes the final values to Etcd before exiting
+// Writes the final values before exiting program
 func writeClosingValuesToDB(config *Config) {
-	// do closing writes to DB
 	if useEtcd {
+		// Add leading zero to single digit days
+		var strDayOfMonth string
+		if time.Now().Day() < 10 {
+			strDayOfMonth = "0" + fmt.Sprintf("%d", time.Now().Day())
+		} else {
+			strDayOfMonth = fmt.Sprintf("%d", time.Now().Day())
+		}
+
+		// then write to etcd
 		myetcd.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
 			config.Etcd.BaseKeyToWrite+"/"+regValue1, fmt.Sprintf("%.0f", bwCurrentUsed))
 		myetcd.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
 			config.Etcd.BaseKeyToWrite+"/"+regValue2, fmt.Sprintf("%.3f", gbPerDayLeft))
 		myetcd.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
-			config.Etcd.BaseKeyToWrite+"/"+regValue3+"/"+
-				fmt.Sprintf("%d", time.Now().Day()), fmt.Sprintf("%.3f", gbPerDayLeft))
+			config.Etcd.BaseKeyToWrite+"/"+regValue3+"/"+strDayOfMonth, fmt.Sprintf("%.3f", gbPerDayLeft))
 		myetcd.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
 			config.Etcd.BaseKeyToWrite+"/"+regValue4, fmt.Sprintf("%d", int(time.Now().Month())))
 	} else {
+		// or write to registry if no etcd
 		setSingleRegKeyValue(regValue1, fmt.Sprintf("%.0f", bwCurrentUsed))
 		setSingleRegKeyValue(regValue2, fmt.Sprintf("%.3f", gbPerDayLeft))
 	}
