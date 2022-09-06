@@ -13,6 +13,8 @@ const regValue1 = "bwCurrentUsed"
 const regValue2 = "bwPerDayRemaining"
 const regValue3 = "dayOfMonth"
 const regValue4 = "monthOfYear"
+const testConnectDbIp = "10.150.30.18"
+const testConnectDbPort = "2379"
 const initialWinWidth = 975
 const initialWinHeight = 175
 

@@ -137,7 +137,7 @@ func GetRegStringValue(regStr string) string {
 // Things to perform before showing GUI
 func getConfigAndDBValues(config *Config) {
 	useEtcd = false
-	if testSockConnect("10.150.30.19", "2379") { // etcd exists lets use that for settings
+	if testSockConnect(testConnectDbIp, testConnectDbPort) { // etcd exists lets use that for settings
 		useEtcd = true
 
 		exePath, _ := os.Getwd()
