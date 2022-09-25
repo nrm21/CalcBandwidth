@@ -137,45 +137,52 @@ func GetRegStringValue(regStr string) string {
 // Things to perform before showing GUI
 func getConfigAndDBValues(config *Config) {
 	useEtcd = false
-	if testSockConnect(testConnectDbIp, testConnectDbPort) { // etcd exists lets use that for settings
-		useEtcd = true
+	for _, address := range testConnectDbIPs {
+		ipAndPort := strings.Split(address, ":")
+		if testSockConnect(ipAndPort[0], ipAndPort[1]) { // etcd exists lets use that for settings
+			useEtcd = true
 
-		exePath, _ := os.Getwd()
-		if exePath[len(exePath)-4:] == "\\src" || exePath[len(exePath)-4:] == "\\bin" {
-			exePath = exePath[:len(exePath)-4]
-		}
+			exePath, _ := os.Getwd()
+			if exePath[len(exePath)-4:] == "\\src" || exePath[len(exePath)-4:] == "\\bin" {
+				exePath = exePath[:len(exePath)-4]
+			}
 
-		*config, _ = getConfigContentsFromYaml(exePath + "\\config.yml")
+			*config, _ = getConfigContentsFromYaml(exePath + "\\config.yml")
 
-		// if the cert path doesnt exist
-		if _, err := os.Stat(config.Etcd.CertPath); errors.Is(err, os.ErrNotExist) {
-			walk.MsgBox(nil, "Fatal Error", "Fatal: "+err.Error(), walk.MsgBoxIconError)
-		}
+			// if the cert path doesnt exist
+			if _, err := os.Stat(config.Etcd.CertPath); errors.Is(err, os.ErrNotExist) {
+				walk.MsgBox(nil, "Fatal Error", "Fatal: "+err.Error(), walk.MsgBoxIconError)
+			}
 
-		etcdValues, _ := myetcd.ReadFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints, config.Etcd.BaseKeyToWrite)
-		bwCurrentUsed, _ = strconv.ParseFloat(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue1], 64)
+			etcdValues, _ := myetcd.ReadFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints, config.Etcd.BaseKeyToWrite)
+			bwCurrentUsed, _ = strconv.ParseFloat(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue1], 64)
 
-		// Delete all daily data if we are in new month
-		dbMonth, _ := strconv.ParseInt(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue4], 10, 64)
-		if dbMonth != int64(time.Now().Month()) {
-			// Have a msg box here notifying the user of deleting keys
-			walk.MsgBox(nil, "Info", "New month, will delete all daily keys now", walk.MsgBoxIconInformation)
+			// Delete all daily data if we are in new month
+			dbMonth, _ := strconv.ParseInt(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue4], 10, 64)
+			if dbMonth != int64(time.Now().Month()) {
+				// Have a msg box here notifying the user of deleting keys
+				walk.MsgBox(nil, "Info", "New month, will delete all daily keys now", walk.MsgBoxIconInformation)
 
-			// If key for the first day of month exists, we should assume all days do
-			// and delete all 31 days one by one (silent error for days that don't exist)
-			dayOfMonthSubkey := config.Etcd.BaseKeyToWrite + "/" + regValue3
-			if _, ok := etcdValues[dayOfMonthSubkey+"/1"]; ok {
-				for day := 1; day <= 31; day++ {
-					myetcd.DeleteFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
-						dayOfMonthSubkey+"/"+fmt.Sprint(day))
+				// If key for the first day of month exists, we should assume all days do
+				// and delete all 31 days one by one (silent error for days that don't exist)
+				dayOfMonthSubkey := config.Etcd.BaseKeyToWrite + "/" + regValue3
+				if _, ok := etcdValues[dayOfMonthSubkey+"/1"]; ok {
+					for day := 1; day <= 31; day++ {
+						myetcd.DeleteFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
+							dayOfMonthSubkey+"/"+fmt.Sprint(day))
+					}
 				}
 			}
+		} else { // etcd doesnt appear to exist lets use registry for settings
+			key = new(registry.Key)
+			*key = getRegKeyValues()
+			bwCurrentUsed, _ = strconv.ParseFloat(GetRegStringValue(regValue1), 64)
 		}
-
-	} else { // etcd doesnt appear to exist lets use registry for settings
-		key = new(registry.Key)
-		*key = getRegKeyValues()
-		bwCurrentUsed, _ = strconv.ParseFloat(GetRegStringValue(regValue1), 64)
+		// if we have connected sucessfully to any etcd server, we don't need to connect to
+		// any others servers anymore, so just break from loop
+		if useEtcd {
+			break
+		}
 	}
 }
 

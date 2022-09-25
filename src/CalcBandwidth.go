@@ -13,8 +13,6 @@ const regValue1 = "bwCurrentUsed"
 const regValue2 = "bwPerDayRemaining"
 const regValue3 = "dayOfMonth"
 const regValue4 = "monthOfYear"
-const testConnectDbIp = "10.150.30.18"
-const testConnectDbPort = "2379"
 const initialWinWidth = 975
 const initialWinHeight = 175
 
@@ -27,6 +25,7 @@ var pushButton *walk.PushButton
 var key *registry.Key
 var bwCurrentUsed, gbPerDayLeft float64
 var dayOfMonth int
+var testConnectDbIPs = []string{"10.150.30.17:2379", "10.150.30.18:2379", "10.150.30.19:2379"}
 
 func main() {
 	var config Config
