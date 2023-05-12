@@ -166,10 +166,17 @@ func getConfigAndDBValues(config *Config) {
 				// If key for the first day of month exists, we should assume all days do
 				// and delete all 31 days one by one (silent error for days that don't exist)
 				dayOfMonthSubkey := config.Etcd.BaseKeyToWrite + "/" + regValue3
-				if _, ok := etcdValues[dayOfMonthSubkey+"/1"]; ok {
+				if _, ok := etcdValues[dayOfMonthSubkey+"/01"]; ok {
 					for day := 1; day <= 31; day++ {
+						var strDay string
+						if day < 10 {
+							strDay = "0" + fmt.Sprint(day)
+						} else {
+							strDay = fmt.Sprint(day)
+						}
+
 						myetcd.DeleteFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
-							dayOfMonthSubkey+"/"+fmt.Sprint(day))
+							dayOfMonthSubkey+"/"+strDay)
 					}
 				}
 			}
