@@ -180,16 +180,18 @@ func getConfigAndDBValues(config *Config) {
 					}
 				}
 			}
-		} else { // etcd doesnt appear to exist lets use registry for settings
-			key = new(registry.Key)
-			*key = getRegKeyValues()
-			bwCurrentUsed, _ = strconv.ParseFloat(GetRegStringValue(regValue1), 64)
 		}
 		// if we have connected sucessfully to any etcd server, we don't need to connect to
 		// any others servers anymore, so just break from loop
 		if useEtcd {
 			break
 		}
+	}
+	if !useEtcd { // etcd doesnt appear to exist lets use registry for settings
+		walk.MsgBox(nil, "Info", "Etcd appears to not be in use, using registry fallback", walk.MsgBoxIconInformation)
+		key = new(registry.Key)
+		*key = getRegKeyValues()
+		bwCurrentUsed, _ = strconv.ParseFloat(GetRegStringValue(regValue1), 64)
 	}
 }
 
