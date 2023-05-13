@@ -117,10 +117,11 @@ func getRegKeyValues() registry.Key {
 }
 
 // Attempts to write a value to a registry string
-func setSingleRegKeyValue(regName, regValue string) {
-	err := key.SetStringValue(regName, regValue)
+func setSingleRegKeyValue(regStr, regValue string) {
+	err := key.SetStringValue(regStr, regValue)
 	if err != nil {
-		log.Fatalf("Error writing registry value %s, exiting program", regName)
+		walk.MsgBox(nil, "Fatal Error", "Error writing registry value: "+regStr+" exiting program", walk.MsgBoxIconError)
+		log.Fatalf("Error writing registry value %s, exiting program", regStr)
 	}
 }
 
@@ -128,6 +129,7 @@ func setSingleRegKeyValue(regName, regValue string) {
 func GetRegStringValue(regStr string) string {
 	value, _, err := key.GetStringValue(regStr)
 	if err != nil {
+		walk.MsgBox(nil, "Fatal Error", "Error reading registry value: "+regStr+" exiting program", walk.MsgBoxIconError)
 		log.Fatalf("Error reading registry value %s, exiting program", regStr)
 	}
 
@@ -137,17 +139,18 @@ func GetRegStringValue(regStr string) string {
 // Things to perform before showing GUI
 func getConfigAndDBValues(config *Config) {
 	useEtcd = false
-	for _, address := range testConnectDbIPs {
+
+	// first get values from conf
+	exePath, _ := os.Getwd()
+	if exePath[len(exePath)-4:] == "\\src" || exePath[len(exePath)-4:] == "\\bin" {
+		exePath = exePath[:len(exePath)-4]
+	}
+	*config, _ = getConfigContentsFromYaml(exePath + "\\config.yml")
+
+	for _, address := range config.Etcd.Endpoints {
 		ipAndPort := strings.Split(address, ":")
 		if testSockConnect(ipAndPort[0], ipAndPort[1]) { // etcd exists lets use that for settings
 			useEtcd = true
-
-			exePath, _ := os.Getwd()
-			if exePath[len(exePath)-4:] == "\\src" || exePath[len(exePath)-4:] == "\\bin" {
-				exePath = exePath[:len(exePath)-4]
-			}
-
-			*config, _ = getConfigContentsFromYaml(exePath + "\\config.yml")
 
 			// if the cert path doesnt exist
 			if _, err := os.Stat(config.Etcd.CertPath); errors.Is(err, os.ErrNotExist) {
@@ -188,7 +191,7 @@ func getConfigAndDBValues(config *Config) {
 		}
 	}
 	if !useEtcd { // etcd doesnt appear to exist lets use registry for settings
-		walk.MsgBox(nil, "Info", "Etcd appears to not be in use, using registry fallback", walk.MsgBoxIconInformation)
+		walk.MsgBox(nil, "Info", "Unable to reach Etcd servers, using registry fallback", walk.MsgBoxIconInformation)
 		key = new(registry.Key)
 		*key = getRegKeyValues()
 		bwCurrentUsed, _ = strconv.ParseFloat(GetRegStringValue(regValue1), 64)

@@ -25,7 +25,6 @@ var pushButton *walk.PushButton
 var key *registry.Key
 var bwCurrentUsed, gbPerDayLeft float64
 var dayOfMonth int
-var testConnectDbIPs = []string{"10.150.30.17:2379", "10.150.30.18:2379", "10.150.30.19:2379"}
 
 func main() {
 	var config Config
