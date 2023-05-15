@@ -1,7 +1,6 @@
 package main
 
 import (
-	"_nate/CalcBandwidth/src/myetcd"
 	"errors"
 	"fmt"
 	"log"
@@ -157,11 +156,11 @@ func getConfigAndDBValues(config *Config) {
 				walk.MsgBox(nil, "Fatal Error", "Fatal: "+err.Error(), walk.MsgBoxIconError)
 			}
 
-			etcdValues, _ := myetcd.ReadFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints, config.Etcd.BaseKeyToWrite)
-			bwCurrentUsed, _ = strconv.ParseFloat(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue1], 64)
+			etcdValues, _ := support.ReadFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints, config.Etcd.BaseKeyToWrite)
+			bwCurrentUsed, _ = strconv.ParseFloat(string(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue1]), 64)
 
 			// Delete all daily data if we are in new month
-			dbMonth, _ := strconv.ParseInt(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue4], 10, 64)
+			dbMonth, _ := strconv.ParseInt(string(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue4]), 10, 64)
 			if dbMonth != int64(time.Now().Month()) {
 				// Have a msg box here notifying the user of deleting keys
 				walk.MsgBox(nil, "Info", "New month, will delete all daily keys now", walk.MsgBoxIconInformation)
@@ -178,7 +177,7 @@ func getConfigAndDBValues(config *Config) {
 							strDay = fmt.Sprint(day)
 						}
 
-						myetcd.DeleteFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
+						support.DeleteFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
 							dayOfMonthSubkey+"/"+strDay)
 					}
 				}
@@ -221,13 +220,13 @@ func writeClosingValuesToDB(config *Config) {
 		}
 
 		// then write to etcd
-		myetcd.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
+		support.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
 			config.Etcd.BaseKeyToWrite+"/"+regValue1, fmt.Sprintf("%.0f", bwCurrentUsed))
-		myetcd.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
+		support.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
 			config.Etcd.BaseKeyToWrite+"/"+regValue2, fmt.Sprintf("%.3f", gbPerDayLeft))
-		myetcd.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
+		support.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
 			config.Etcd.BaseKeyToWrite+"/"+regValue3+"/"+strDayOfMonth, fmt.Sprintf("%.3f", gbPerDayLeft))
-		myetcd.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
+		support.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
 			config.Etcd.BaseKeyToWrite+"/"+regValue4, fmt.Sprintf("%d", int(time.Now().Month())))
 	} else {
 		// or write to registry if no etcd
