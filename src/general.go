@@ -156,7 +156,11 @@ func getConfigAndDBValues(config *Config) {
 				walk.MsgBox(nil, "Fatal Error", "Fatal: "+err.Error(), walk.MsgBoxIconError)
 			}
 
-			etcdValues, _ := support.ReadFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints, config.Etcd.BaseKeyToWrite)
+			etcdValues, err := support.ReadFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints, config.Etcd.BaseKeyToWrite)
+			if err != nil {
+				walk.MsgBox(nil, "Fatal Error", "Fatal: "+err.Error()+"\nPossible authentication failure", walk.MsgBoxIconError)
+				log.Fatal(err.Error())
+			}
 			bwCurrentUsed, _ = strconv.ParseFloat(string(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue1]), 64)
 
 			// Delete all daily data if we are in new month
