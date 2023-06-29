@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"strconv"
 
 	"github.com/lxn/walk"
@@ -28,6 +29,13 @@ var dayOfMonth int
 
 func main() {
 	var config Config
+
+	// first get values from conf
+	exePath, _ := os.Getwd()
+	if exePath[len(exePath)-4:] == "\\src" || exePath[len(exePath)-4:] == "\\bin" {
+		exePath = exePath[:len(exePath)-4]
+	}
+	getConfigAndDBValues(&config, exePath+"\\config.yml")
 
 	MainWindow{
 		AssignTo: &mainWin,

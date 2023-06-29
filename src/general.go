@@ -162,15 +162,10 @@ func deleteIfNewMonth(config *Config, etcdValues *(map[string][]byte)) {
 }
 
 // Things to perform before showing GUI
-func getConfigAndDBValues(config *Config) {
+func getConfigAndDBValues(config *Config, exePath string) {
 	useEtcd = false
 
-	// first get values from conf
-	exePath, _ := os.Getwd()
-	if exePath[len(exePath)-4:] == "\\src" || exePath[len(exePath)-4:] == "\\bin" {
-		exePath = exePath[:len(exePath)-4]
-	}
-	*config, _ = getConfigContentsFromYaml(exePath + "\\config.yml")
+	*config, _ = getConfigContentsFromYaml(exePath)
 
 	for _, address := range config.Etcd.Endpoints {
 		ipAndPort := strings.Split(address, ":")
