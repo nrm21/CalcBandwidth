@@ -135,6 +135,32 @@ func GetRegStringValue(regStr string) string {
 	return value
 }
 
+// Delete all daily data if we are in new month
+func deleteIfNewMonth(config *Config, etcdValues *(map[string][]byte)) {
+	dbMonth, _ := strconv.ParseInt(string((*etcdValues)[config.Etcd.BaseKeyToWrite+"/"+regValue4]), 10, 64)
+	if dbMonth != int64(time.Now().Month()) {
+		// Have a msg box here notifying the user of deleting keys
+		walk.MsgBox(nil, "Info", "New month, will delete all daily keys now", walk.MsgBoxIconInformation)
+
+		// If key for the first day of month exists, we should assume all days do
+		// and delete all 31 days one by one (silent error for days that don't exist)
+		dayOfMonthSubkey := config.Etcd.BaseKeyToWrite + "/" + regValue3
+		if _, ok := (*etcdValues)[dayOfMonthSubkey+"/01"]; ok {
+			for day := 1; day <= 31; day++ {
+				var strDay string
+				if day < 10 {
+					strDay = "0" + fmt.Sprint(day)
+				} else {
+					strDay = fmt.Sprint(day)
+				}
+
+				support.DeleteFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
+					dayOfMonthSubkey+"/"+strDay)
+			}
+		}
+	}
+}
+
 // Things to perform before showing GUI
 func getConfigAndDBValues(config *Config) {
 	useEtcd = false
@@ -163,29 +189,7 @@ func getConfigAndDBValues(config *Config) {
 			}
 			bwCurrentUsed, _ = strconv.ParseFloat(string(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue1]), 64)
 
-			// Delete all daily data if we are in new month
-			dbMonth, _ := strconv.ParseInt(string(etcdValues[config.Etcd.BaseKeyToWrite+"/"+regValue4]), 10, 64)
-			if dbMonth != int64(time.Now().Month()) {
-				// Have a msg box here notifying the user of deleting keys
-				walk.MsgBox(nil, "Info", "New month, will delete all daily keys now", walk.MsgBoxIconInformation)
-
-				// If key for the first day of month exists, we should assume all days do
-				// and delete all 31 days one by one (silent error for days that don't exist)
-				dayOfMonthSubkey := config.Etcd.BaseKeyToWrite + "/" + regValue3
-				if _, ok := etcdValues[dayOfMonthSubkey+"/01"]; ok {
-					for day := 1; day <= 31; day++ {
-						var strDay string
-						if day < 10 {
-							strDay = "0" + fmt.Sprint(day)
-						} else {
-							strDay = fmt.Sprint(day)
-						}
-
-						support.DeleteFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
-							dayOfMonthSubkey+"/"+strDay)
-					}
-				}
-			}
+			deleteIfNewMonth(config, &etcdValues)
 		}
 		// if we have connected sucessfully to any etcd server, we don't need to connect to
 		// any others servers anymore, so just break from loop

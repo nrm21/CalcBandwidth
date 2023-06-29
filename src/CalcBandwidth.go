@@ -28,7 +28,6 @@ var dayOfMonth int
 
 func main() {
 	var config Config
-	getConfigAndDBValues(&config)
 
 	MainWindow{
 		AssignTo: &mainWin,
