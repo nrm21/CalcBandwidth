@@ -7,41 +7,53 @@ import (
 )
 
 func TestGetConfigContentsFromYaml(t *testing.T) {
-	result := Config{}
+	t.Run("Get config from correct YAML path", func(t *testing.T) {
+		result := Config{}
 
-	type testresults struct {
-		field    string
-		expected string
-	}
-	tests := []testresults{
-		{"Endpoints", "10.150.30.17:2379"},
-		{"BaseKeyToWrite", "/nate/CalcBandwidth"},
-		{"CertPath", "E:\\Documents\\_Nate\\Computer Related\\Private keys\\Etcd Certs"},
-	}
+		type testresults struct {
+			field    string
+			expected string
+		}
+		tests := []testresults{
+			{"Endpoints", "10.150.30.17:2379"},
+			{"BaseKeyToWrite", "/nate/CalcBandwidth"},
+			{"CertPath", "E:\\Documents\\_Nate\\Computer Related\\Private keys\\Etcd Certs"},
+		}
 
-	exePath, _ := os.Getwd()
-	if exePath[len(exePath)-4:] == "\\src" || exePath[len(exePath)-4:] == "\\bin" {
-		exePath = exePath[:len(exePath)-4]
-	}
-	exePath = exePath + "\\config.yml"
-	result, _ = getConfigContentsFromYaml(exePath)
+		exePath, _ := os.Getwd()
+		if exePath[len(exePath)-4:] == "\\src" || exePath[len(exePath)-4:] == "\\bin" {
+			exePath = exePath[:len(exePath)-4]
+		}
+		exePath = exePath + "\\config.yml"
+		result, _ = getConfigContentsFromYaml(exePath)
 
-	for _, test := range tests {
-		switch test.field {
-		case "BaseKeyToWrite":
-			if test.expected != result.Etcd.BaseKeyToWrite {
-				t.Errorf("ERROR: Expected: %q got: %q", test.expected, result.Etcd.BaseKeyToWrite)
-			}
-		case "CertPath":
-			if test.expected != result.Etcd.CertPath {
-				t.Errorf("ERROR: Expected: %q got: %q", test.expected, result.Etcd.CertPath)
-			}
-		case "Endpoints":
-			if test.expected != result.Etcd.Endpoints[0] {
-				t.Errorf("ERROR: Expected: %q got: %q", test.expected, result.Etcd.CertPath)
+		for _, test := range tests {
+			switch test.field {
+			case "BaseKeyToWrite":
+				if test.expected != result.Etcd.BaseKeyToWrite {
+					t.Errorf("ERROR: Expected: %q got: %q", test.expected, result.Etcd.BaseKeyToWrite)
+				}
+			case "CertPath":
+				if test.expected != result.Etcd.CertPath {
+					t.Errorf("ERROR: Expected: %q got: %q", test.expected, result.Etcd.CertPath)
+				}
+			case "Endpoints":
+				if test.expected != result.Etcd.Endpoints[0] {
+					t.Errorf("ERROR: Expected: %q got: %q", test.expected, result.Etcd.CertPath)
+				}
 			}
 		}
-	}
+	})
+	t.Run("Get config from empty path", func(t *testing.T) {
+		expected := ""
+		result, err := getConfigContentsFromYaml("")
+		if err == nil {
+			t.Errorf("ERROR: Expected: an fs.PathError but got none")
+		}
+		if expected != result.Etcd.BaseKeyToWrite {
+			t.Errorf("ERROR: Expected: %q got: %q", expected, result)
+		}
+	})
 }
 
 func TestCalcMonthDays(t *testing.T) {
