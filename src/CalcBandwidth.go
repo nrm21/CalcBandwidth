@@ -14,13 +14,13 @@ const regValue1 = "bwCurrentUsed"
 const regValue2 = "bwPerDayRemaining"
 const regValue3 = "dayOfMonth"
 const regValue4 = "monthOfYear"
-const initialWinWidth = 975
-const initialWinHeight = 175
+const initialWinWidth = 940
+const initialWinHeight = 970
 
 // Global pointers
 var useEtcd bool
 var mainWin *walk.MainWindow
-var resultMsgBox *walk.TextEdit
+var resultMsgBox, barGraphBox *walk.TextEdit
 var bwTextBox *walk.LineEdit
 var pushButton *walk.PushButton
 var key *registry.Key
@@ -35,7 +35,7 @@ func main() {
 	if exePath[len(exePath)-4:] == "\\src" || exePath[len(exePath)-4:] == "\\bin" {
 		exePath = exePath[:len(exePath)-4]
 	}
-	getConfigAndDBValues(&config, exePath+"\\config.yml")
+	dbValues := getConfigAndDBValues(&config, exePath+"\\config.yml")
 
 	MainWindow{
 		AssignTo: &mainWin,
@@ -67,7 +67,11 @@ func main() {
 								AssignTo: &pushButton,
 								Text:     "        Press to calculate        ",
 								OnClicked: func() {
-									go setToRegAndCalc()
+									// write values to db, reload them, then update gui
+									writeClosingValuesToDB(&config)
+									dbValues = getConfigAndDBValues(&config, exePath+"\\config.yml")
+									setToRegAndCalc()
+									barGraphBox.SetText(populateGraph(&config, dbValues))
 								},
 							},
 						},
@@ -78,7 +82,7 @@ func main() {
 				Children: []Widget{
 					TextEdit{
 						AssignTo: &resultMsgBox,
-						MinSize:  Size{initialWinWidth / 2, initialWinHeight - 115},
+						MinSize:  Size{initialWinWidth, 60},
 						ReadOnly: true,
 						Font: Font{
 							Family:    "Ariel",
@@ -88,6 +92,20 @@ func main() {
 						OnBoundsChanged: func() {
 							resultMsgBox.SetWidth(mainWin.Width() - 35)
 						},
+					},
+				},
+			},
+			HSplitter{
+				Children: []Widget{
+					TextEdit{
+						AssignTo: &barGraphBox,
+						MinSize:  Size{initialWinWidth, 750},
+						ReadOnly: true,
+						Font: Font{
+							Family:    "Ariel",
+							PointSize: 17,
+						},
+						Text: populateGraph(&config, dbValues),
 					},
 				},
 			},

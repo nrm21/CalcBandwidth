@@ -162,9 +162,11 @@ func deleteIfNewMonth(config *Config, etcdValues *(map[string][]byte)) {
 }
 
 // Things to perform before showing GUI
-func getConfigAndDBValues(config *Config, exePath string) {
-	useEtcd = false
+func getConfigAndDBValues(config *Config, exePath string) map[string][]byte {
+	var etcdValues map[string][]byte
+	var err error
 
+	useEtcd = false
 	*config, _ = getConfigContentsFromYaml(exePath)
 
 	for _, address := range config.Etcd.Endpoints {
@@ -173,11 +175,11 @@ func getConfigAndDBValues(config *Config, exePath string) {
 			useEtcd = true
 
 			// if the cert path doesnt exist
-			if _, err := os.Stat(config.Etcd.CertPath); errors.Is(err, os.ErrNotExist) {
+			if _, err = os.Stat(config.Etcd.CertPath); errors.Is(err, os.ErrNotExist) {
 				walk.MsgBox(nil, "Fatal Error", "Fatal: "+err.Error(), walk.MsgBoxIconError)
 			}
 
-			etcdValues, err := support.ReadFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints, config.Etcd.BaseKeyToWrite)
+			etcdValues, err = support.ReadFromEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints, config.Etcd.BaseKeyToWrite)
 			if err != nil {
 				walk.MsgBox(nil, "Fatal Error", "Fatal: "+err.Error()+"\nPossible authentication failure", walk.MsgBoxIconError)
 				log.Fatal(err.Error())
@@ -198,6 +200,53 @@ func getConfigAndDBValues(config *Config, exePath string) {
 		*key = getRegKeyValues()
 		bwCurrentUsed, _ = strconv.ParseFloat(GetRegStringValue(regValue1), 64)
 	}
+
+	return etcdValues
+}
+
+// Return the min and max numbers of the slice
+func getMinAndMaxOf(vals []float64) (float64, float64) {
+	min, max := 0.0, 0.0
+	for i, e := range vals {
+		if i == 0 || e < min {
+			min = e
+		}
+		if i == 0 || e > max {
+			max = e
+		}
+	}
+
+	return min, max
+}
+
+// Writes the characters for the graph
+func populateGraph(config *Config, dbValues map[string][]byte) string {
+	var everything []string
+	var everystring string
+	var allValues []float64
+
+	for i := 1; i < 32; i++ {
+		strNum := fmt.Sprint(i)
+		if i < 10 {
+			strNum = "0" + fmt.Sprint(i)
+		}
+		val, ok := dbValues[config.Etcd.BaseKeyToWrite+"/"+regValue3+"/"+strNum]
+		if ok { // if we hit values that doesnt exist we have no more in the map (since they will always be ordered)
+			fVal, _ := strconv.ParseFloat(string(val[:]), 64)
+			allValues = append(allValues, fVal)
+			everything = append(everything, regValue3+"/"+strNum+":\t"+string(val))
+		}
+	}
+
+	min, max := getMinAndMaxOf(allValues)
+	min -= .05 // give us a slightly lower min so even the smallest values show SOME graph on the GUI
+
+	for i, line := range everything {
+		pct := (allValues[i] - min) / (max - min) * 100 // get percentage
+		everystring += line + "\t" + strings.Repeat("|", int(pct)) + "\r\n"
+	}
+
+	return everystring
 }
 
 // Checks a socket connection and returns bool of if open or not
