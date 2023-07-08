@@ -14,7 +14,7 @@ const regValue1 = "bwCurrentUsed"
 const regValue2 = "bwPerDayRemaining"
 const regValue3 = "dayOfMonth"
 const regValue4 = "monthOfYear"
-const initialWinWidth = 940
+const initialWinWidth = 950
 const initialWinHeight = 970
 
 // Global pointers
@@ -67,10 +67,10 @@ func main() {
 								AssignTo: &pushButton,
 								Text:     "        Press to calculate        ",
 								OnClicked: func() {
-									// write values to db, reload them, then update gui
+									// write values to db, reload them and update gui
+									setToRegAndCalc()
 									writeClosingValuesToDB(&config)
 									dbValues = getConfigAndDBValues(&config, exePath+"\\config.yml")
-									setToRegAndCalc()
 									barGraphBox.SetText(populateGraph(&config, dbValues))
 								},
 							},
@@ -106,6 +106,9 @@ func main() {
 							PointSize: 17,
 						},
 						Text: populateGraph(&config, dbValues),
+						OnBoundsChanged: func() {
+							barGraphBox.SetWidth(mainWin.Width() - 35)
+						},
 					},
 				},
 			},
