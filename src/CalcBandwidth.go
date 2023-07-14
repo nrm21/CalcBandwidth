@@ -14,17 +14,19 @@ const regValue1 = "bwCurrentUsed"
 const regValue2 = "bwPerDayRemaining"
 const regValue3 = "dayOfMonth"
 const regValue4 = "monthOfYear"
+const regValue5 = "bwMin"
+const regValue6 = "bwMax"
 const initialWinWidth = 950
-const initialWinHeight = 970
+const initialWinHeight = 975
 
 // Global pointers
 var useEtcd bool
 var mainWin *walk.MainWindow
 var resultMsgBox, barGraphBox *walk.TextEdit
-var bwTextBox *walk.LineEdit
+var bwTextBox, lowerTextBox, upperTextBox *walk.LineEdit
 var pushButton *walk.PushButton
 var key *registry.Key
-var bwCurrentUsed, gbPerDayLeft float64
+var bwCurrentUsed, gbPerDayLeft, bwMin, bwMax float64
 var dayOfMonth int
 
 func main() {
@@ -91,6 +93,31 @@ func main() {
 						Text: calculateBandwidth(),
 						OnBoundsChanged: func() {
 							resultMsgBox.SetWidth(mainWin.Width() - 35)
+						},
+					},
+				},
+			},
+			HSplitter{
+				Children: []Widget{
+					ScrollView{
+						Layout: HBox{
+							MarginsZero: true,
+						},
+						Children: []Widget{
+							Label{
+								Text: "Lower graph range:",
+							},
+							LineEdit{
+								AssignTo: &lowerTextBox,
+								Text:     string(dbValues[config.Etcd.BaseKeyToWrite+"/"+regValue5]),
+							},
+							Label{
+								Text: "Upper graph range:",
+							},
+							LineEdit{
+								AssignTo: &upperTextBox,
+								Text:     string(dbValues[config.Etcd.BaseKeyToWrite+"/"+regValue6]),
+							},
 						},
 					},
 				},

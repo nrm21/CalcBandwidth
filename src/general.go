@@ -239,11 +239,39 @@ func populateGraph(config *Config, dbValues map[string][]byte) string {
 	}
 
 	min, max := getMinAndMaxOf(allValues)
-	min -= .05 // give us a slightly lower min so even the smallest values show SOME graph on the GUI
+
+	if lowerTextBox != nil {
+		if bwMinFromText, _ := strconv.ParseFloat(lowerTextBox.Text(), 64); bwMinFromText <= min {
+			bwMin = bwMinFromText
+		} else {
+			// if our value is higher than the minimum number ignore it and set it back to the minimum,
+			// this helps avoid out of range, divide by zero and other nasty errors
+			lowerTextBox.SetText(fmt.Sprintf("%.3f", min))
+			bwMin = min
+		}
+	} else {
+		bwMin, _ = strconv.ParseFloat(string(dbValues[config.Etcd.BaseKeyToWrite+"/"+regValue5]), 64)
+	}
+	if upperTextBox != nil {
+		if bwMaxFromText, _ := strconv.ParseFloat(upperTextBox.Text(), 64); bwMaxFromText >= max {
+			bwMax = bwMaxFromText
+		} else {
+			// if our value is lower than the maximum number ignore it and set it back to the maximum,
+			// this helps avoid out of range, divide by zero and other nasty errors
+			upperTextBox.SetText(fmt.Sprintf("%.3f", max))
+			bwMax = max
+		}
+	} else {
+		bwMax, _ = strconv.ParseFloat(string(dbValues[config.Etcd.BaseKeyToWrite+"/"+regValue6]), 64)
+	}
 
 	for i, line := range everything {
-		pct := (allValues[i] - min) / (max - min) * 100 // get percentage
-		everystring += line + "\t" + strings.Repeat("|", int(pct)) + "\r\n"
+		if bwMax > 0 {
+			pct := (allValues[i] - bwMin) / (bwMax - bwMin) * 100 // get percentage
+			everystring += line + "\t" + strings.Repeat("|", int(pct)) + "\r\n"
+		} else {
+			everystring += line + "\t" + "\r\n"
+		}
 	}
 
 	return everystring
@@ -280,6 +308,10 @@ func writeClosingValuesToDB(config *Config) {
 			config.Etcd.BaseKeyToWrite+"/"+regValue3+"/"+strDayOfMonth, fmt.Sprintf("%.3f", gbPerDayLeft))
 		support.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
 			config.Etcd.BaseKeyToWrite+"/"+regValue4, fmt.Sprintf("%d", int(time.Now().Month())))
+		support.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
+			config.Etcd.BaseKeyToWrite+"/"+regValue5, fmt.Sprintf("%.3f", bwMin))
+		support.WriteToEtcd(&config.Etcd.CertPath, &config.Etcd.Endpoints,
+			config.Etcd.BaseKeyToWrite+"/"+regValue6, fmt.Sprintf("%.3f", bwMax))
 	} else {
 		// or write to registry if no etcd
 		setSingleRegKeyValue(regValue1, fmt.Sprintf("%.0f", bwCurrentUsed))
