@@ -7,9 +7,9 @@ import (
 )
 
 func TestGetConfigContentsFromYaml(t *testing.T) {
-	t.Run("Get config from correct YAML path", func(t *testing.T) {
-		result := Config{}
+	mw := new(MainWin)
 
+	t.Run("Get config from correct YAML path", func(t *testing.T) {
 		type testresults struct {
 			field    string
 			expected string
@@ -25,38 +25,39 @@ func TestGetConfigContentsFromYaml(t *testing.T) {
 			exePath = exePath[:len(exePath)-4]
 		}
 		exePath = exePath + "\\config.yml"
-		result, _ = getConfigContentsFromYaml(exePath)
+		mw.getConfigContentsFromYaml(exePath)
 
 		for _, test := range tests {
 			switch test.field {
 			case "BaseKeyToWrite":
-				if test.expected != result.Etcd.BaseKeyToWrite {
-					t.Errorf("ERROR: Expected: %q got: %q", test.expected, result.Etcd.BaseKeyToWrite)
+				if test.expected != mw.config.Etcd.BaseKeyToWrite {
+					t.Errorf("ERROR: Expected: %q got: %q", test.expected, mw.config.Etcd.BaseKeyToWrite)
 				}
 			case "CertPath":
-				if test.expected != result.Etcd.CertPath {
-					t.Errorf("ERROR: Expected: %q got: %q", test.expected, result.Etcd.CertPath)
+				if test.expected != mw.config.Etcd.CertPath {
+					t.Errorf("ERROR: Expected: %q got: %q", test.expected, mw.config.Etcd.CertPath)
 				}
 			case "Endpoints":
-				if test.expected != result.Etcd.Endpoints[0] {
-					t.Errorf("ERROR: Expected: %q got: %q", test.expected, result.Etcd.CertPath)
+				if test.expected != mw.config.Etcd.Endpoints[0] {
+					t.Errorf("ERROR: Expected: %q got: %q", test.expected, mw.config.Etcd.CertPath)
 				}
 			}
 		}
 	})
 	t.Run("Get config from empty path", func(t *testing.T) {
 		expected := ""
-		result, err := getConfigContentsFromYaml("")
-		if err == nil {
+		if err := mw.getConfigContentsFromYaml(""); err == nil {
 			t.Errorf("ERROR: Expected: an fs.PathError but got none")
 		}
-		if expected != result.Etcd.BaseKeyToWrite {
-			t.Errorf("ERROR: Expected: %q got: %q", expected, result)
+		if expected != mw.config.Etcd.BaseKeyToWrite {
+			t.Errorf("ERROR: Expected: %q got: %q", expected, mw.config)
 		}
 	})
 }
 
 func TestCalcMonthDays(t *testing.T) {
+	mw := new(MainWin)
+
 	type testresults struct {
 		InputMonth time.Month
 		InputYear  int
@@ -70,7 +71,7 @@ func TestCalcMonthDays(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		results := calcMonthDays(test.InputMonth, test.InputYear)
+		results := mw.calcMonthDays(test.InputMonth, test.InputYear)
 		if results != test.Expected {
 			t.Errorf("ERROR: Expected: %f got: %f", test.Expected, results)
 		} else {

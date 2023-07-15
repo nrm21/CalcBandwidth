@@ -19,28 +19,29 @@ const regValue6 = "bwMax"
 const initialWinWidth = 950
 const initialWinHeight = 975
 
-// Global pointers
-var useEtcd bool
-var mainWin *walk.MainWindow
-var resultMsgBox, barGraphBox *walk.TextEdit
-var bwTextBox, lowerTextBox, upperTextBox *walk.LineEdit
-var pushButton *walk.PushButton
-var key *registry.Key
-var bwCurrentUsed, gbPerDayLeft, bwMin, bwMax float64
-var dayOfMonth int
+type MainWin struct {
+	*walk.MainWindow
+	resultMsgBox, barGraphBox                 *walk.TextEdit
+	bwTextBox, lowerTextBox, upperTextBox     *walk.LineEdit
+	key                                       *registry.Key
+	config                                    Config
+	dbValues                                  map[string][]byte
+	useEtcd                                   bool
+	bwCurrentUsed, gbPerDayLeft, bwMin, bwMax float64
+}
 
 func main() {
-	var config Config
+	mw := new(MainWin)
 
 	// first get values from conf
 	exePath, _ := os.Getwd()
 	if exePath[len(exePath)-4:] == "\\src" || exePath[len(exePath)-4:] == "\\bin" {
 		exePath = exePath[:len(exePath)-4]
 	}
-	dbValues := getConfigAndDBValues(&config, exePath+"\\config.yml")
+	mw.getConfigAndDBValues(exePath + "\\config.yml")
 
 	MainWindow{
-		AssignTo: &mainWin,
+		AssignTo: &mw.MainWindow,
 		Title:    "Bandwidth Calculator",
 		Size:     Size{initialWinWidth, initialWinHeight},
 		MinSize:  Size{initialWinWidth, initialWinHeight},
@@ -57,23 +58,22 @@ func main() {
 								Text: "Bandwidth Used:",
 							},
 							LineEdit{
-								AssignTo: &bwTextBox,
-								Text:     strconv.FormatFloat(bwCurrentUsed, 'f', -1, 64),
+								AssignTo: &mw.bwTextBox,
+								Text:     strconv.FormatFloat(mw.bwCurrentUsed, 'f', -1, 64),
 								OnKeyPress: func(keystroke walk.Key) {
 									if keystroke >= walk.Key0 && keystroke <= walk.Key9 { // if a digit key pressed
-										go setToRegAndCalc()
+										go mw.setToRegAndCalc()
 									}
 								},
 							},
 							PushButton{
-								AssignTo: &pushButton,
-								Text:     "        Press to calculate        ",
+								Text: "        Press to calculate        ",
 								OnClicked: func() {
 									// write values to db, reload them and update gui
-									setToRegAndCalc()
-									writeClosingValuesToDB(&config)
-									dbValues = getConfigAndDBValues(&config, exePath+"\\config.yml")
-									barGraphBox.SetText(populateGraph(&config, dbValues))
+									mw.setToRegAndCalc()
+									mw.writeClosingValuesToDB()
+									mw.getConfigAndDBValues(exePath + "\\config.yml")
+									mw.barGraphBox.SetText(mw.populateGraph())
 								},
 							},
 						},
@@ -83,16 +83,16 @@ func main() {
 			HSplitter{
 				Children: []Widget{
 					TextEdit{
-						AssignTo: &resultMsgBox,
+						AssignTo: &mw.resultMsgBox,
 						MinSize:  Size{initialWinWidth, 60},
 						ReadOnly: true,
 						Font: Font{
 							Family:    "Ariel",
 							PointSize: 17,
 						},
-						Text: calculateBandwidth(),
+						Text: mw.calculateBandwidth(),
 						OnBoundsChanged: func() {
-							resultMsgBox.SetWidth(mainWin.Width() - 35)
+							mw.resultMsgBox.SetWidth(mw.Width() - 35)
 						},
 					},
 				},
@@ -108,15 +108,15 @@ func main() {
 								Text: "Lower graph range:",
 							},
 							LineEdit{
-								AssignTo: &lowerTextBox,
-								Text:     string(dbValues[config.Etcd.BaseKeyToWrite+"/"+regValue5]),
+								AssignTo: &mw.lowerTextBox,
+								Text:     string(mw.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue5]),
 							},
 							Label{
 								Text: "Upper graph range:",
 							},
 							LineEdit{
-								AssignTo: &upperTextBox,
-								Text:     string(dbValues[config.Etcd.BaseKeyToWrite+"/"+regValue6]),
+								AssignTo: &mw.upperTextBox,
+								Text:     string(mw.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue6]),
 							},
 						},
 					},
@@ -125,16 +125,16 @@ func main() {
 			HSplitter{
 				Children: []Widget{
 					TextEdit{
-						AssignTo: &barGraphBox,
+						AssignTo: &mw.barGraphBox,
 						MinSize:  Size{initialWinWidth, 750},
 						ReadOnly: true,
 						Font: Font{
 							Family:    "Ariel",
 							PointSize: 17,
 						},
-						Text: populateGraph(&config, dbValues),
+						Text: mw.populateGraph(),
 						OnBoundsChanged: func() {
-							barGraphBox.SetWidth(mainWin.Width() - 35)
+							mw.barGraphBox.SetWidth(mw.Width() - 35)
 						},
 					},
 				},
@@ -142,5 +142,5 @@ func main() {
 		},
 	}.Run()
 
-	writeClosingValuesToDB(&config)
+	mw.writeClosingValuesToDB()
 }
