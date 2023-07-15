@@ -17,12 +17,14 @@ const regValue4 = "monthOfYear"
 const regValue5 = "bwMin"
 const regValue6 = "bwMax"
 const initialWinWidth = 950
-const initialWinHeight = 975
+const initialWinHeight = 1000
+const graphImgHeight = 750
 
 type MainWin struct {
 	*walk.MainWindow
 	resultMsgBox, barGraphBox                 *walk.TextEdit
 	bwTextBox, lowerTextBox, upperTextBox     *walk.LineEdit
+	graphImage                                *walk.ImageView
 	key                                       *registry.Key
 	config                                    Config
 	dbValues                                  map[string][]byte
@@ -39,6 +41,8 @@ func main() {
 		exePath = exePath[:len(exePath)-4]
 	}
 	mw.getConfigAndDBValues(exePath + "\\config.yml")
+
+	mw.makeChart() // make the bar graph
 
 	MainWindow{
 		AssignTo: &mw.MainWindow,
@@ -73,7 +77,8 @@ func main() {
 									mw.setToRegAndCalc()
 									mw.writeClosingValuesToDB()
 									mw.getConfigAndDBValues(exePath + "\\config.yml")
-									mw.barGraphBox.SetText(mw.populateGraph())
+									// mw.barGraphBox.SetText(mw.populateGraph())
+									mw.makeChart()
 								},
 							},
 						},
@@ -84,7 +89,7 @@ func main() {
 				Children: []Widget{
 					TextEdit{
 						AssignTo: &mw.resultMsgBox,
-						MinSize:  Size{initialWinWidth, 60},
+						MinSize:  Size{initialWinWidth, 70},
 						ReadOnly: true,
 						Font: Font{
 							Family:    "Ariel",
@@ -122,20 +127,32 @@ func main() {
 					},
 				},
 			},
+			// HSplitter{
+			// 	Children: []Widget{
+			// 		TextEdit{
+			// 			AssignTo: &mw.barGraphBox,
+			// 			MinSize:  Size{initialWinWidth, 750},
+			// 			ReadOnly: true,
+			// 			Font: Font{
+			// 				Family:    "Ariel",
+			// 				PointSize: 17,
+			// 			},
+			// 			Text: mw.populateGraph(),
+			// 			OnBoundsChanged: func() {
+			// 				mw.barGraphBox.SetWidth(mw.Width() - 35)
+			// 			},
+			// 		},
+			// 	},
+			// },
 			HSplitter{
 				Children: []Widget{
-					TextEdit{
-						AssignTo: &mw.barGraphBox,
-						MinSize:  Size{initialWinWidth, 750},
-						ReadOnly: true,
-						Font: Font{
-							Family:    "Ariel",
-							PointSize: 17,
-						},
-						Text: mw.populateGraph(),
-						OnBoundsChanged: func() {
-							mw.barGraphBox.SetWidth(mw.Width() - 35)
-						},
+					ImageView{
+						AssignTo: &mw.graphImage,
+						MinSize:  Size{initialWinWidth, graphImgHeight},
+						MaxSize:  Size{initialWinWidth, graphImgHeight},
+						Image:    "graph.png",
+						Margin:   4,
+						Mode:     ImageViewModeZoom,
 					},
 				},
 			},
