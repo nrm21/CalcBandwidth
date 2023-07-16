@@ -75,7 +75,6 @@ func main() {
 									mw.setToRegAndCalc()
 									mw.writeClosingValuesToDB()
 									mw.getConfigAndDBValues(exePath + "\\config.yml")
-									// mw.barGraphBox.SetText(mw.populateGraph())
 									mw.makeChart()
 									mw.refreshImage()
 								},

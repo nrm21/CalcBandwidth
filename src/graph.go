@@ -30,11 +30,11 @@ func (mw *MainWin) makeChart() {
 	allValues := []float64{}
 	bars := []chart.Value{}
 
-	f, err := os.OpenFile("graph.png", os.O_WRONLY|os.O_CREATE, 0600)
+	file, err := os.OpenFile("graph.png", os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		log.Fatal("Chart file could not be opened")
 	}
-	defer f.Close()
+	defer file.Close()
 
 	for i := 1; i < 32; i++ {
 		strNum := fmt.Sprint(i)
@@ -52,7 +52,12 @@ func (mw *MainWin) makeChart() {
 
 	if mw.lowerTextBox != nil {
 		if bwMinFromText, _ := strconv.ParseFloat(mw.lowerTextBox.Text(), 64); bwMinFromText <= min {
-			mw.bwMin = bwMinFromText
+			if bwMinFromText < 0 { // if min below zero just set to zero
+				mw.lowerTextBox.SetText("0")
+				mw.bwMin = 0
+			} else {
+				mw.bwMin = bwMinFromText
+			}
 		} else {
 			// if our value is higher than the minimum number ignore it and set it back to the minimum,
 			// this helps avoid out of range, divide by zero and other nasty errors
@@ -101,10 +106,11 @@ func (mw *MainWin) makeChart() {
 				Show:     true,
 				FontSize: 1.5,
 			},
+			ValueFormatter: chart.FloatValueFormatter,
 		},
 		Bars: bars,
 	}
-	if err = graph.Render(chart.PNG, f); err != nil {
+	if err = graph.Render(chart.PNG, file); err != nil {
 		log.Fatal("Chart could not be rendered")
 	}
 }
