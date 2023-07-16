@@ -16,7 +16,7 @@ const regValue3 = "dayOfMonth"
 const regValue4 = "monthOfYear"
 const regValue5 = "bwMin"
 const regValue6 = "bwMax"
-const initialWinWidth = 950
+const initialWinWidth = 850
 const initialWinHeight = 1000
 const graphImgHeight = 750
 
@@ -41,8 +41,6 @@ func main() {
 		exePath = exePath[:len(exePath)-4]
 	}
 	mw.getConfigAndDBValues(exePath + "\\config.yml")
-
-	mw.makeChart() // make the bar graph
 
 	MainWindow{
 		AssignTo: &mw.MainWindow,
@@ -79,6 +77,7 @@ func main() {
 									mw.getConfigAndDBValues(exePath + "\\config.yml")
 									// mw.barGraphBox.SetText(mw.populateGraph())
 									mw.makeChart()
+									mw.refreshImage()
 								},
 							},
 						},
@@ -127,37 +126,20 @@ func main() {
 					},
 				},
 			},
-			// HSplitter{
-			// 	Children: []Widget{
-			// 		TextEdit{
-			// 			AssignTo: &mw.barGraphBox,
-			// 			MinSize:  Size{initialWinWidth, 750},
-			// 			ReadOnly: true,
-			// 			Font: Font{
-			// 				Family:    "Ariel",
-			// 				PointSize: 17,
-			// 			},
-			// 			Text: mw.populateGraph(),
-			// 			OnBoundsChanged: func() {
-			// 				mw.barGraphBox.SetWidth(mw.Width() - 35)
-			// 			},
-			// 		},
-			// 	},
-			// },
 			HSplitter{
 				Children: []Widget{
 					ImageView{
 						AssignTo: &mw.graphImage,
-						MinSize:  Size{initialWinWidth, graphImgHeight},
-						MaxSize:  Size{initialWinWidth, graphImgHeight},
-						Image:    "graph.png",
-						Margin:   4,
-						Mode:     ImageViewModeZoom,
 					},
 				},
 			},
 		},
-	}.Run()
+	}.Create()
+
+	// make the bar graph
+	mw.makeChart()
+	mw.refreshImage()
+	mw.Run()
 
 	mw.writeClosingValuesToDB()
 }
