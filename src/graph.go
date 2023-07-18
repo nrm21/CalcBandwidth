@@ -80,6 +80,23 @@ func (mw *MainWin) makeChart() {
 		mw.bwMax, _ = strconv.ParseFloat(string(mw.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue6]), 64)
 	}
 
+	// setup the values for the y axis based on min and max we are looking at
+	yaxisticks := []chart.Tick{}
+	f := 0.0
+	for f <= mw.bwMax {
+		if f >= mw.bwMin {
+			yaxisticks = append(yaxisticks, chart.Tick{Value: f, Label: fmt.Sprintf("%.1f", f)})
+		}
+		// if range is small/big enough change step size
+		if mw.bwMax-mw.bwMin <= 5 {
+			f += .5
+		} else if mw.bwMax-mw.bwMin >= 25 {
+			f += 5
+		} else {
+			f += 1
+		}
+	}
+
 	graph := chart.BarChart{
 		Background: chart.Style{
 			Padding: chart.Box{
@@ -98,6 +115,7 @@ func (mw *MainWin) makeChart() {
 			FontSize: 1.5,
 		},
 		YAxis: chart.YAxis{
+			Ticks: yaxisticks,
 			Range: &chart.ContinuousRange{
 				Min: mw.bwMin,
 				Max: mw.bwMax,
