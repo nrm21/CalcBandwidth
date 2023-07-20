@@ -33,6 +33,7 @@ type MainWin struct {
 }
 
 func main() {
+	var appIcon, _ = walk.NewIconFromResourceId(2) // number 2 is resource ID printed by rsrc.exe when using v0.10+
 	mw := new(MainWin)
 
 	// first get values from conf
@@ -44,6 +45,7 @@ func main() {
 
 	MainWindow{
 		AssignTo: &mw.MainWindow,
+		Icon:     appIcon,
 		Title:    "Bandwidth Calculator",
 		Size:     Size{initialWinWidth, initialWinHeight},
 		MinSize:  Size{initialWinWidth, initialWinHeight},

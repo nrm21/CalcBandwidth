@@ -1,6 +1,6 @@
 NAME        := CalcBandwidth.exe
 OUTPUT_BIN  := .\bin\${NAME}
-SOURCE      := .\src
+SOURCE      := .\cmd
 GO_FLAGS    :=
 GO_TAGS     := walk_use_cgo
 CGO_ENABLED := 1
@@ -15,4 +15,5 @@ move:
 build:
 	@echo "Building from source..."
 	@set CGO_ENABLED=${CGO_ENABLED}
+	./assets/rsrc.exe -manifest=assets/test.manifest -ico=assets/calc.ico -o=cmd/rsrc.syso
 	go build -v -tags ${GO_TAGS} ${GO_FLAGS} -ldflags=${LD_FLAGS} -o ${OUTPUT_BIN} ${SOURCE}
