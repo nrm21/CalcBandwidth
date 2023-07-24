@@ -109,7 +109,7 @@ func (mw *MainWin) makeChart() {
 		DPI:      1200,
 		Width:    initialWinWidth + 75,
 		Height:   graphImgHeight + 15,
-		BarWidth: 35,
+		BarWidth: 30,
 		XAxis: chart.Style{
 			Show:     true,
 			FontSize: 1.5,

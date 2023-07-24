@@ -38,7 +38,7 @@ func main() {
 
 	// first get values from conf
 	exePath, _ := os.Getwd()
-	if exePath[len(exePath)-4:] == "\\src" || exePath[len(exePath)-4:] == "\\bin" {
+	if exePath[len(exePath)-4:] == "\\cmd" || exePath[len(exePath)-4:] == "\\bin" {
 		exePath = exePath[:len(exePath)-4]
 	}
 	mw.getConfigAndDBValues(exePath + "\\config.yml")
