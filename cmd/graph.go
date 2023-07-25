@@ -112,7 +112,7 @@ func (mw *MainWin) makeChart() {
 		BarWidth: 30,
 		XAxis: chart.Style{
 			Show:     true,
-			FontSize: 1.5,
+			FontSize: 1.2,
 		},
 		YAxis: chart.YAxis{
 			Ticks: yaxisticks,
@@ -122,7 +122,7 @@ func (mw *MainWin) makeChart() {
 			},
 			Style: chart.Style{
 				Show:     true,
-				FontSize: 1.5,
+				FontSize: 1.2,
 			},
 			ValueFormatter: chart.FloatValueFormatter,
 		},
