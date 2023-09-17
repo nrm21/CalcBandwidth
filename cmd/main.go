@@ -64,9 +64,10 @@ func main() {
 							LineEdit{
 								AssignTo: &mw.bwTextBox,
 								Text:     strconv.FormatFloat(mw.bwCurrentUsed, 'f', -1, 64),
-								OnKeyPress: func(keystroke walk.Key) {
+								// OnKeyPress event fires before we get the number, need to use OnKeyUp
+								OnKeyUp: func(keystroke walk.Key) {
 									if keystroke >= walk.Key0 && keystroke <= walk.Key9 { // if a digit key pressed
-										go mw.setToRegAndCalc()
+										mw.resultMsgBox.SetText(mw.calculateBandwidth())
 									}
 								},
 							},
@@ -74,7 +75,7 @@ func main() {
 								Text: "        Press to calculate        ",
 								OnClicked: func() {
 									// write values to db, reload them and update gui
-									mw.setToRegAndCalc()
+									mw.resultMsgBox.SetText(mw.calculateBandwidth())
 									mw.writeClosingValuesToDB()
 									mw.getConfigAndDBValues(exePath + "\\config.yml")
 									mw.makeChart()

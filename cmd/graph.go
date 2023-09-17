@@ -10,7 +10,7 @@ import (
 	"github.com/wcharczuk/go-chart"
 )
 
-// Return the min and max numbers of the slice
+// Return the min and max numbers of the slice in one iteration of the array
 func (mw *MainWin) getMinAndMaxOf(vals []float64) (float64, float64) {
 	min, max := 0.0, 0.0
 	for i, e := range vals {
