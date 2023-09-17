@@ -9,6 +9,16 @@ import (
 func TestGetConfigContentsFromYaml(t *testing.T) {
 	mw := new(MainWin)
 
+	t.Run("Get config from empty path", func(t *testing.T) {
+		expected := ""
+		if err := mw.getConfigContentsFromYaml(""); err == nil {
+			t.Errorf("ERROR: Expected: an fs.PathError but got none")
+		}
+		if expected != mw.config.Etcd.BaseKeyToWrite {
+			t.Errorf("ERROR: Expected: %q got: %q", expected, mw.config)
+		}
+	})
+
 	t.Run("Get config from correct YAML path", func(t *testing.T) {
 		type testresults struct {
 			field    string
@@ -21,7 +31,7 @@ func TestGetConfigContentsFromYaml(t *testing.T) {
 		}
 
 		exePath, _ := os.Getwd()
-		if exePath[len(exePath)-4:] == "\\src" || exePath[len(exePath)-4:] == "\\bin" {
+		if exePath[len(exePath)-4:] == "\\bin" || exePath[len(exePath)-4:] == "\\cmd" || exePath[len(exePath)-4:] == "\\src" {
 			exePath = exePath[:len(exePath)-4]
 		}
 		exePath = exePath + "\\config.yml"
@@ -42,15 +52,6 @@ func TestGetConfigContentsFromYaml(t *testing.T) {
 					t.Errorf("ERROR: Expected: %q got: %q", test.expected, mw.config.Etcd.CertPath)
 				}
 			}
-		}
-	})
-	t.Run("Get config from empty path", func(t *testing.T) {
-		expected := ""
-		if err := mw.getConfigContentsFromYaml(""); err == nil {
-			t.Errorf("ERROR: Expected: an fs.PathError but got none")
-		}
-		if expected != mw.config.Etcd.BaseKeyToWrite {
-			t.Errorf("ERROR: Expected: %q got: %q", expected, mw.config)
 		}
 	})
 }
