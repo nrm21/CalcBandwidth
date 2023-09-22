@@ -10,6 +10,28 @@ import (
 	"github.com/wcharczuk/go-chart"
 )
 
+// iterates through all possible numbers 1 to 31 to see if the exist in the DB
+// to determine if there is bar data for each day in the map structure
+func getBarsData(mw *MainWin) ([]float64, []chart.Value) {
+	allValues := []float64{}
+	bars := []chart.Value{}
+
+	for i := 1; i < 32; i++ {
+		strNum := fmt.Sprint(i)
+		if i < 10 {
+			strNum = "0" + fmt.Sprint(i)
+		}
+		val, ok := mw.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue3+"/"+strNum]
+		if ok { // if we hit values that doesnt exist we have no more in the map (since they will always be ordered)
+			fVal, _ := strconv.ParseFloat(string(val[:]), 64)
+			allValues = append(allValues, fVal)
+			bars = append(bars, chart.Value{Label: strNum, Value: fVal})
+		}
+	}
+
+	return allValues, bars
+}
+
 // Return the min and max numbers of the slice in one iteration of the array
 func (mw *MainWin) getMinAndMaxOf(vals []float64) (float64, float64) {
 	min, max := 0.0, 0.0
@@ -25,31 +47,7 @@ func (mw *MainWin) getMinAndMaxOf(vals []float64) (float64, float64) {
 	return min, max
 }
 
-// Creates the bar graph png file
-func (mw *MainWin) makeChart() {
-	allValues := []float64{}
-	bars := []chart.Value{}
-
-	file, err := os.OpenFile("graph.png", os.O_WRONLY|os.O_CREATE, 0600)
-	if err != nil {
-		log.Fatal("Chart file could not be opened")
-	}
-	defer file.Close()
-
-	for i := 1; i < 32; i++ {
-		strNum := fmt.Sprint(i)
-		if i < 10 {
-			strNum = "0" + fmt.Sprint(i)
-		}
-		val, ok := mw.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue3+"/"+strNum]
-		if ok { // if we hit values that doesnt exist we have no more in the map (since they will always be ordered)
-			fVal, _ := strconv.ParseFloat(string(val[:]), 64)
-			allValues = append(allValues, fVal)
-			bars = append(bars, chart.Value{Label: strNum, Value: fVal})
-		}
-	}
-	min, max := mw.getMinAndMaxOf(allValues)
-
+func setGraphUpperLowerExtents(mw *MainWin, min, max float64) {
 	if mw.lowerTextBox != nil {
 		if bwMinFromText, _ := strconv.ParseFloat(mw.lowerTextBox.Text(), 64); bwMinFromText <= min {
 			if bwMinFromText < 0 { // if min below zero just set to zero
@@ -79,6 +77,23 @@ func (mw *MainWin) makeChart() {
 	} else {
 		mw.bwMax, _ = strconv.ParseFloat(string(mw.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue6]), 64)
 	}
+}
+
+// Creates the bar graph png file
+func (mw *MainWin) makeChart() {
+	// open the file we will write too
+	file, err := os.OpenFile("graph.png", os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		log.Fatal("Chart file could not be opened")
+	}
+	defer file.Close()
+
+	// read the keys we need to make the graph bars
+	allValues, bars := getBarsData(mw)
+
+	// find the smallest and largest graph bar so know what extents to use for our graph
+	min, max := mw.getMinAndMaxOf(allValues)
+	setGraphUpperLowerExtents(mw, min, max)
 
 	// setup the values for the y axis based on min and max we are looking at
 	yaxisticks := []chart.Tick{}
@@ -135,7 +150,7 @@ func (mw *MainWin) makeChart() {
 
 // Gets the image from file and puts into walk.image struct so we can use
 func (mw *MainWin) getImageFromFile() walk.Image {
-	img, err := walk.NewImageFromFile("graph.png")
+	img, err := walk.NewImageFromFileForDPI("graph.png", 600)
 	if err != nil {
 		log.Fatal("Cannot load new image")
 	}

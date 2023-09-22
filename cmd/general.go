@@ -210,8 +210,34 @@ func (mw *MainWin) testSockConnect(host string, port string) bool {
 	}
 }
 
+// This func checks if days are missing between the last day of data we have
+// and the current day, then adds bars for each day that is between them
+func addBarsToDBIfNeeded(mw *MainWin) {
+	_, bars := getBarsData(mw)
+	if len(bars) > 0 {
+		barsLastLabel, _ := strconv.ParseInt(bars[len(bars)-1].Label, 10, 64)
+		barsLastValue := bars[len(bars)-1].Value
+		daysLapse := time.Now().Day() - int(barsLastLabel)
+
+		if daysLapse > 1 {
+			differenceBetweenDays := mw.gbPerDayLeft - barsLastValue
+			differenceBetweenDays = differenceBetweenDays / float64(daysLapse)
+			for i := 1; i < daysLapse; i++ {
+				// there are more than zero days missing since yesterday (or possible further
+				// back) appear to not be the last bars label so we should add some bars
+				barsLastLabel += 1
+				barsLastValue += differenceBetweenDays
+
+				support.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
+					mw.config.Etcd.BaseKeyToWrite+"/"+regValue3+"/"+fmt.Sprintf("%d", barsLastLabel),
+					fmt.Sprintf("%.3f", barsLastValue))
+			}
+		}
+	}
+}
+
 // Writes the final values before exiting program
-func (mw *MainWin) writeClosingValuesToDB() {
+func (mw *MainWin) writeValuesToDB() {
 	if mw.useEtcd {
 		// Add leading zero to single digit days
 		var strDayOfMonth string
@@ -220,6 +246,10 @@ func (mw *MainWin) writeClosingValuesToDB() {
 		} else {
 			strDayOfMonth = fmt.Sprintf("%d", time.Now().Day())
 		}
+
+		// check if there are more than zero days of data missing from chart, and if so
+		// extrapolate to create the remaining bars and write them to DB
+		addBarsToDBIfNeeded(mw)
 
 		// then write to etcd
 		support.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,

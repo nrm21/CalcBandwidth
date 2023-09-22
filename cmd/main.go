@@ -24,6 +24,7 @@ type MainWin struct {
 	*walk.MainWindow
 	resultMsgBox, barGraphBox                 *walk.TextEdit
 	bwTextBox, lowerTextBox, upperTextBox     *walk.LineEdit
+	fillPrevDaysCheckBox                      *walk.CheckBox
 	graphImage                                *walk.ImageView
 	key                                       *registry.Key
 	config                                    Config
@@ -76,7 +77,7 @@ func main() {
 								OnClicked: func() {
 									// write values to db, reload them and update gui
 									mw.resultMsgBox.SetText(mw.calculateBandwidth())
-									mw.writeClosingValuesToDB()
+									mw.writeValuesToDB()
 									mw.getConfigAndDBValues(exePath + "\\config.yml")
 									mw.makeChart()
 									mw.refreshImage()
@@ -124,6 +125,13 @@ func main() {
 								AssignTo: &mw.upperTextBox,
 								Text:     string(mw.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue6]),
 							},
+							Label{
+								Text: "Fill empty previous days:",
+							},
+							CheckBox{
+								AssignTo: &mw.fillPrevDaysCheckBox,
+								Checked:  true,
+							},
 						},
 					},
 				},
@@ -143,5 +151,5 @@ func main() {
 	mw.refreshImage()
 	mw.Run()
 
-	mw.writeClosingValuesToDB()
+	mw.writeValuesToDB()
 }
