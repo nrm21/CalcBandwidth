@@ -132,8 +132,8 @@ func (mw *MainWin) GetRegStringValue(regStr string) string {
 }
 
 // Delete all daily data if we are in new month
-func (mw *MainWin) deleteIfNewMonth(etcdValues *(map[string][]byte)) {
-	dbMonth, _ := strconv.ParseInt(string((*etcdValues)[mw.config.Etcd.BaseKeyToWrite+"/"+regValue4]), 10, 64)
+func (mw *MainWin) deleteIfNewMonth() {
+	dbMonth, _ := strconv.ParseInt(string(mw.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue4]), 10, 64)
 	if dbMonth != int64(time.Now().Month()) {
 		// Have a msg box here notifying the user of deleting keys
 		walk.MsgBox(nil, "Info", "New month, will delete all daily keys now", walk.MsgBoxIconInformation)
@@ -141,7 +141,7 @@ func (mw *MainWin) deleteIfNewMonth(etcdValues *(map[string][]byte)) {
 		// If key for the first day of month exists, we should assume all days do
 		// and delete all 31 days one by one (silent error for days that don't exist)
 		dayOfMonthSubkey := mw.config.Etcd.BaseKeyToWrite + "/" + regValue3
-		if _, ok := (*etcdValues)[dayOfMonthSubkey+"/01"]; ok {
+		if _, ok := mw.dbValues[dayOfMonthSubkey+"/01"]; ok {
 			for day := 1; day <= 31; day++ {
 				var strDay string
 				if day < 10 {
@@ -183,7 +183,7 @@ func (mw *MainWin) getConfigAndDBValues(exePath string) {
 			}
 			mw.bwCurrentUsed, _ = strconv.ParseFloat(string(mw.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue1]), 64)
 
-			mw.deleteIfNewMonth(&mw.dbValues)
+			mw.deleteIfNewMonth()
 		}
 		// if we have connected sucessfully to any etcd server, we don't need to connect to
 		// any others servers anymore, so just break from loop

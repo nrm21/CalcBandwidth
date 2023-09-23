@@ -81,70 +81,72 @@ func setGraphUpperLowerExtents(mw *MainWin, min, max float64) {
 
 // Creates the bar graph png file
 func (mw *MainWin) makeChart() {
-	// open the file we will write too
-	file, err := os.OpenFile("graph.png", os.O_WRONLY|os.O_CREATE, 0600)
-	if err != nil {
-		log.Fatal("Chart file could not be opened")
-	}
-	defer file.Close()
-
-	// read the keys we need to make the graph bars
 	allValues, bars := getBarsData(mw)
 
-	// find the smallest and largest graph bar so know what extents to use for our graph
-	min, max := mw.getMinAndMaxOf(allValues)
-	setGraphUpperLowerExtents(mw, min, max)
+	// only render new graph if we have a dataset, otherwise just use the previously rendered png file
+	if len(bars) != 0 {
+		// find the smallest and largest graph bar so know what extents to use for our graph
+		min, max := mw.getMinAndMaxOf(allValues)
+		setGraphUpperLowerExtents(mw, min, max)
 
-	// setup the values for the y axis based on min and max we are looking at
-	yaxisticks := []chart.Tick{}
-	f := 0.0
-	for f <= mw.bwMax {
-		if f >= mw.bwMin {
-			yaxisticks = append(yaxisticks, chart.Tick{Value: f, Label: fmt.Sprintf("%.1f", f)})
+		// setup the values for the y axis based on min and max we are looking at
+		yaxisticks := []chart.Tick{}
+		f := 0.0
+		for f <= mw.bwMax {
+			if f >= mw.bwMin {
+				yaxisticks = append(yaxisticks, chart.Tick{Value: f, Label: fmt.Sprintf("%.1f", f)})
+			}
+			// if range is small/big enough change step size
+			if mw.bwMax-mw.bwMin <= 5 {
+				f += .5
+			} else if mw.bwMax-mw.bwMin >= 25 {
+				f += 5
+			} else {
+				f += 1
+			}
 		}
-		// if range is small/big enough change step size
-		if mw.bwMax-mw.bwMin <= 5 {
-			f += .5
-		} else if mw.bwMax-mw.bwMin >= 25 {
-			f += 5
-		} else {
-			f += 1
-		}
-	}
 
-	graph := chart.BarChart{
-		Background: chart.Style{
-			Padding: chart.Box{
-				Top:    10,
-				Left:   -2,
-				Bottom: 23,
-				Right:  10,
+		graph := chart.BarChart{
+			Background: chart.Style{
+				Padding: chart.Box{
+					Top:    10,
+					Left:   -2,
+					Bottom: 23,
+					Right:  10,
+				},
 			},
-		},
-		DPI:      1200,
-		Width:    initialWinWidth + 75,
-		Height:   graphImgHeight + 15,
-		BarWidth: 30,
-		XAxis: chart.Style{
-			Show:     true,
-			FontSize: 1.2,
-		},
-		YAxis: chart.YAxis{
-			Ticks: yaxisticks,
-			Range: &chart.ContinuousRange{
-				Min: mw.bwMin,
-				Max: mw.bwMax,
-			},
-			Style: chart.Style{
+			DPI:      1200,
+			Width:    initialWinWidth + 75,
+			Height:   graphImgHeight + 15,
+			BarWidth: 30,
+			XAxis: chart.Style{
 				Show:     true,
 				FontSize: 1.2,
 			},
-			ValueFormatter: chart.FloatValueFormatter,
-		},
-		Bars: bars,
-	}
-	if err = graph.Render(chart.PNG, file); err != nil {
-		log.Fatal("Chart could not be rendered")
+			YAxis: chart.YAxis{
+				Ticks: yaxisticks,
+				Range: &chart.ContinuousRange{
+					Min: mw.bwMin,
+					Max: mw.bwMax,
+				},
+				Style: chart.Style{
+					Show:     true,
+					FontSize: 1.2,
+				},
+				ValueFormatter: chart.FloatValueFormatter,
+			},
+			Bars: bars,
+		}
+		// open the file we will write too
+		file, err := os.OpenFile("graph.png", os.O_WRONLY|os.O_CREATE, 0600)
+		if err != nil {
+			log.Fatal("Chart file could not be opened")
+		}
+		defer file.Close()
+
+		if err = graph.Render(chart.PNG, file); err != nil {
+			log.Fatal("Chart could not be rendered")
+		}
 	}
 }
 
