@@ -210,6 +210,15 @@ func (mw *MainWin) testSockConnect(host string, port string) bool {
 	}
 }
 
+// Simple function to add a leading zero to single digit calendar days
+func getStrDayOfMonth(todaysDate int) string {
+	if todaysDate < 10 {
+		return "0" + fmt.Sprintf("%d", todaysDate)
+	} else {
+		return fmt.Sprintf("%d", todaysDate)
+	}
+}
+
 // This func checks if days are missing between the last day of data we have
 // and the current day, then adds bars for each day that is between them
 func addBarsToDBIfNeeded(mw *MainWin) {
@@ -227,9 +236,10 @@ func addBarsToDBIfNeeded(mw *MainWin) {
 				// back) appear to not be the last bars label so we should add some bars
 				barsLastLabel += 1
 				barsLastValue += differenceBetweenDays
+				strDayOfMonth := getStrDayOfMonth(int(barsLastLabel))
 
 				support.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
-					mw.config.Etcd.BaseKeyToWrite+"/"+regValue3+"/"+fmt.Sprintf("%d", barsLastLabel),
+					mw.config.Etcd.BaseKeyToWrite+"/"+regValue3+"/"+strDayOfMonth,
 					fmt.Sprintf("%.3f", barsLastValue))
 			}
 		}
@@ -240,12 +250,7 @@ func addBarsToDBIfNeeded(mw *MainWin) {
 func (mw *MainWin) writeValuesToDB() {
 	if mw.useEtcd {
 		// Add leading zero to single digit days
-		var strDayOfMonth string
-		if time.Now().Day() < 10 {
-			strDayOfMonth = "0" + fmt.Sprintf("%d", time.Now().Day())
-		} else {
-			strDayOfMonth = fmt.Sprintf("%d", time.Now().Day())
-		}
+		strDayOfMonth := getStrDayOfMonth(time.Now().Day())
 
 		// check if there are more than zero days of data missing from chart, and if so
 		// extrapolate to create the remaining bars and write them to DB
