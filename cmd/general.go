@@ -26,6 +26,8 @@ type Config struct {
 		Timeout        int      `yaml:"timeout"`
 		CertPath       string   `yaml:"certpath"`
 	}
+	dbValues                                  map[string][]byte
+	bwCurrentUsed, gbPerDayLeft, bwMin, bwMax float64
 }
 
 // Unmarshals the config contents from file into memory
@@ -71,7 +73,7 @@ func (mw *MainWin) calculateBandwidth() string {
 	currentYear := time.Now().Year()
 	currentMonth := time.Now().Month()
 	if mw.bwTextBox != nil { // will be nil on initial run of func at opening of program
-		mw.bwCurrentUsed, err = strconv.ParseFloat(strings.TrimSpace(mw.bwTextBox.Text()), 64)
+		mw.config.bwCurrentUsed, err = strconv.ParseFloat(strings.TrimSpace(mw.bwTextBox.Text()), 64)
 	}
 	if err != nil {
 		log.Println("Invalid characters detected, please use integers only")
@@ -82,16 +84,16 @@ func (mw *MainWin) calculateBandwidth() string {
 		totalDaysInMonth := mw.calcMonthDays(currentMonth, currentYear)
 		gbPerDay := bwLimitGBs / totalDaysInMonth
 		gbAllowedSoFar := math.Round(bwLimitGBs / totalDaysInMonth * (hoursSinceMonthStart / 24))
-		gbLeftToUse := bwLimitGBs - mw.bwCurrentUsed
+		gbLeftToUse := bwLimitGBs - mw.config.bwCurrentUsed
 		daysLeftInMonth := totalDaysInMonth - (hoursSinceMonthStart / 24)
-		mw.gbPerDayLeft = gbLeftToUse / daysLeftInMonth
-		bwDifferential := gbAllowedSoFar - mw.bwCurrentUsed
+		mw.config.gbPerDayLeft = gbLeftToUse / daysLeftInMonth
+		bwDifferential := gbAllowedSoFar - mw.config.bwCurrentUsed
 
 		output := fmt.Sprintf("Fractional days left in month:      %.3f         (Days this month:  %d)\r\n",
 			daysLeftInMonth, int(totalDaysInMonth))
 		output += fmt.Sprintf("Bandwidth allowed up to today:   %.0f GB    (Used / Differential / Left:  %.0f / %.0f / %d GB)\r\n",
-			gbAllowedSoFar, mw.bwCurrentUsed, bwDifferential, int(gbLeftToUse))
-		output += fmt.Sprintf("Bandwidth per day remaining:     %.3f GB  (Daily average:  %.3f GB)\r\n", mw.gbPerDayLeft, gbPerDay)
+			gbAllowedSoFar, mw.config.bwCurrentUsed, bwDifferential, int(gbLeftToUse))
+		output += fmt.Sprintf("Bandwidth per day remaining:     %.3f GB  (Daily average:  %.3f GB)\r\n", mw.config.gbPerDayLeft, gbPerDay)
 
 		return output
 	}
@@ -133,7 +135,7 @@ func (mw *MainWin) GetRegStringValue(regStr string) string {
 
 // Delete all daily data if we are in new month
 func (mw *MainWin) deleteIfNewMonth() {
-	dbMonth, _ := strconv.ParseInt(string(mw.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue4]), 10, 64)
+	dbMonth, _ := strconv.ParseInt(string(mw.config.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue4]), 10, 64)
 	if dbMonth != int64(time.Now().Month()) {
 		// Have a msg box here notifying the user of deleting keys
 		walk.MsgBox(nil, "Info", "New month, will delete all daily keys now", walk.MsgBoxIconInformation)
@@ -141,7 +143,7 @@ func (mw *MainWin) deleteIfNewMonth() {
 		// If key for the first day of month exists, we should assume all days do
 		// and delete all 31 days one by one (silent error for days that don't exist)
 		dayOfMonthSubkey := mw.config.Etcd.BaseKeyToWrite + "/" + regValue3
-		if _, ok := mw.dbValues[dayOfMonthSubkey+"/01"]; ok {
+		if _, ok := mw.config.dbValues[dayOfMonthSubkey+"/01"]; ok {
 			for day := 1; day <= 31; day++ {
 				var strDay string
 				if day < 10 {
@@ -176,12 +178,12 @@ func (mw *MainWin) getConfigAndDBValues(exePath string) {
 				walk.MsgBox(nil, "Fatal Error", "Fatal: "+err.Error(), walk.MsgBoxIconError)
 			}
 
-			mw.dbValues, err = support.ReadFromEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints, mw.config.Etcd.BaseKeyToWrite)
+			mw.config.dbValues, err = support.ReadFromEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints, mw.config.Etcd.BaseKeyToWrite)
 			if err != nil {
 				walk.MsgBox(nil, "Fatal Error", "Fatal: "+err.Error()+"\nPossible authentication failure", walk.MsgBoxIconError)
 				log.Fatal(err.Error())
 			}
-			mw.bwCurrentUsed, _ = strconv.ParseFloat(string(mw.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue1]), 64)
+			mw.config.bwCurrentUsed, _ = strconv.ParseFloat(string(mw.config.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue1]), 64)
 
 			mw.deleteIfNewMonth()
 		}
@@ -195,7 +197,7 @@ func (mw *MainWin) getConfigAndDBValues(exePath string) {
 		walk.MsgBox(nil, "Info", "Unable to reach Etcd servers, using registry fallback", walk.MsgBoxIconInformation)
 		mw.key = new(registry.Key)
 		*mw.key = mw.getRegKeyValues()
-		mw.bwCurrentUsed, _ = strconv.ParseFloat(mw.GetRegStringValue(regValue1), 64)
+		mw.config.bwCurrentUsed, _ = strconv.ParseFloat(mw.GetRegStringValue(regValue1), 64)
 	}
 }
 
@@ -229,7 +231,7 @@ func addBarsToDBIfNeeded(mw *MainWin) {
 		daysLapse := time.Now().Day() - int(barsLastLabel)
 
 		if daysLapse > 1 {
-			differenceBetweenDays := mw.gbPerDayLeft - barsLastValue
+			differenceBetweenDays := mw.config.gbPerDayLeft - barsLastValue
 			differenceBetweenDays = differenceBetweenDays / float64(daysLapse)
 			for i := 1; i < daysLapse; i++ {
 				// there are more than zero days missing since yesterday (or possible further
@@ -258,20 +260,20 @@ func (mw *MainWin) writeValuesToDB() {
 
 		// then write to etcd
 		support.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
-			mw.config.Etcd.BaseKeyToWrite+"/"+regValue1, fmt.Sprintf("%.0f", mw.bwCurrentUsed))
+			mw.config.Etcd.BaseKeyToWrite+"/"+regValue1, fmt.Sprintf("%.0f", mw.config.bwCurrentUsed))
 		support.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
-			mw.config.Etcd.BaseKeyToWrite+"/"+regValue2, fmt.Sprintf("%.3f", mw.gbPerDayLeft))
+			mw.config.Etcd.BaseKeyToWrite+"/"+regValue2, fmt.Sprintf("%.3f", mw.config.gbPerDayLeft))
 		support.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
-			mw.config.Etcd.BaseKeyToWrite+"/"+regValue3+"/"+strDayOfMonth, fmt.Sprintf("%.3f", mw.gbPerDayLeft))
+			mw.config.Etcd.BaseKeyToWrite+"/"+regValue3+"/"+strDayOfMonth, fmt.Sprintf("%.3f", mw.config.gbPerDayLeft))
 		support.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
 			mw.config.Etcd.BaseKeyToWrite+"/"+regValue4, fmt.Sprintf("%d", int(time.Now().Month())))
 		support.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
-			mw.config.Etcd.BaseKeyToWrite+"/"+regValue5, fmt.Sprintf("%.3f", mw.bwMin))
+			mw.config.Etcd.BaseKeyToWrite+"/"+regValue5, fmt.Sprintf("%.3f", mw.config.bwMin))
 		support.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
-			mw.config.Etcd.BaseKeyToWrite+"/"+regValue6, fmt.Sprintf("%.3f", mw.bwMax))
+			mw.config.Etcd.BaseKeyToWrite+"/"+regValue6, fmt.Sprintf("%.3f", mw.config.bwMax))
 	} else {
 		// or write to registry if no etcd
-		mw.setSingleRegKeyValue(regValue1, fmt.Sprintf("%.0f", mw.bwCurrentUsed))
-		mw.setSingleRegKeyValue(regValue2, fmt.Sprintf("%.3f", mw.gbPerDayLeft))
+		mw.setSingleRegKeyValue(regValue1, fmt.Sprintf("%.0f", mw.config.bwCurrentUsed))
+		mw.setSingleRegKeyValue(regValue2, fmt.Sprintf("%.3f", mw.config.gbPerDayLeft))
 	}
 }

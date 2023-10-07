@@ -10,6 +10,8 @@ import (
 	"github.com/wcharczuk/go-chart"
 )
 
+const graphFilename = "graph.png"
+
 // iterates through all possible numbers 1 to 31 to see if the exist in the DB
 // to determine if there is bar data for each day in the map structure
 func getBarsData(mw *MainWin) ([]float64, []chart.Value) {
@@ -21,7 +23,7 @@ func getBarsData(mw *MainWin) ([]float64, []chart.Value) {
 		if i < 10 {
 			strNum = "0" + fmt.Sprint(i)
 		}
-		val, ok := mw.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue3+"/"+strNum]
+		val, ok := mw.config.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue3+"/"+strNum]
 		if ok { // if we hit values that doesnt exist we have no more in the map (since they will always be ordered)
 			fVal, _ := strconv.ParseFloat(string(val[:]), 64)
 			allValues = append(allValues, fVal)
@@ -52,30 +54,30 @@ func setGraphUpperLowerExtents(mw *MainWin, min, max float64) {
 		if bwMinFromText, _ := strconv.ParseFloat(mw.lowerTextBox.Text(), 64); bwMinFromText <= min {
 			if bwMinFromText < 0 { // if min below zero just set to zero
 				mw.lowerTextBox.SetText("0")
-				mw.bwMin = 0
+				mw.config.bwMin = 0
 			} else {
-				mw.bwMin = bwMinFromText
+				mw.config.bwMin = bwMinFromText
 			}
 		} else {
 			// if our value is higher than the minimum number ignore it and set it back to the minimum,
 			// this helps avoid out of range, divide by zero and other nasty errors
 			mw.lowerTextBox.SetText(fmt.Sprintf("%.3f", min))
-			mw.bwMin = min
+			mw.config.bwMin = min
 		}
 	} else {
-		mw.bwMin, _ = strconv.ParseFloat(string(mw.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue5]), 64)
+		mw.config.bwMin, _ = strconv.ParseFloat(string(mw.config.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue5]), 64)
 	}
 	if mw.upperTextBox != nil {
 		if bwMaxFromText, _ := strconv.ParseFloat(mw.upperTextBox.Text(), 64); bwMaxFromText >= max {
-			mw.bwMax = bwMaxFromText
+			mw.config.bwMax = bwMaxFromText
 		} else {
 			// if our value is lower than the maximum number ignore it and set it back to the maximum,
 			// this helps avoid out of range, divide by zero and other nasty errors
 			mw.upperTextBox.SetText(fmt.Sprintf("%.3f", max))
-			mw.bwMax = max
+			mw.config.bwMax = max
 		}
 	} else {
-		mw.bwMax, _ = strconv.ParseFloat(string(mw.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue6]), 64)
+		mw.config.bwMax, _ = strconv.ParseFloat(string(mw.config.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue6]), 64)
 	}
 }
 
@@ -92,14 +94,14 @@ func (mw *MainWin) makeChart() {
 		// setup the values for the y axis based on min and max we are looking at
 		yaxisticks := []chart.Tick{}
 		f := 0.0
-		for f <= mw.bwMax {
-			if f >= mw.bwMin {
+		for f <= mw.config.bwMax {
+			if f >= mw.config.bwMin {
 				yaxisticks = append(yaxisticks, chart.Tick{Value: f, Label: fmt.Sprintf("%.1f", f)})
 			}
 			// if range is small/big enough change step size
-			if mw.bwMax-mw.bwMin <= 5 {
+			if mw.config.bwMax-mw.config.bwMin <= 5 {
 				f += .5
-			} else if mw.bwMax-mw.bwMin >= 25 {
+			} else if mw.config.bwMax-mw.config.bwMin >= 25 {
 				f += 5
 			} else {
 				f += 1
@@ -126,8 +128,8 @@ func (mw *MainWin) makeChart() {
 			YAxis: chart.YAxis{
 				Ticks: yaxisticks,
 				Range: &chart.ContinuousRange{
-					Min: mw.bwMin,
-					Max: mw.bwMax,
+					Min: mw.config.bwMin,
+					Max: mw.config.bwMax,
 				},
 				Style: chart.Style{
 					Show:     true,
@@ -138,7 +140,7 @@ func (mw *MainWin) makeChart() {
 			Bars: bars,
 		}
 		// open the file we will write too
-		file, err := os.OpenFile("graph.png", os.O_WRONLY|os.O_CREATE, 0600)
+		file, err := os.OpenFile(graphFilename, os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {
 			log.Fatal("Chart file could not be opened")
 		}
@@ -152,7 +154,7 @@ func (mw *MainWin) makeChart() {
 
 // Gets the image from file and puts into walk.image struct so we can use
 func (mw *MainWin) getImageFromFile() walk.Image {
-	img, err := walk.NewImageFromFileForDPI("graph.png", 600)
+	img, err := walk.NewImageFromFileForDPI(graphFilename, 600)
 	if err != nil {
 		log.Fatal("Cannot load new image")
 	}
@@ -163,17 +165,17 @@ func (mw *MainWin) getImageFromFile() walk.Image {
 // Sets (and resets) the widget that holds the graph so we can refresh it in program
 func (mw *MainWin) refreshImage() {
 	// create new image from recalculations
-	imageView, err := walk.NewImageView(mw.graphImage.Parent())
-	if err != nil {
+	if imageView, err := walk.NewImageView(mw.graphImage.Parent()); err == nil {
+		imageView.SetImage(mw.getImageFromFile())
+		imageView.SetMinMaxSize(walk.Size{initialWinWidth, graphImgHeight},
+			walk.Size{initialWinWidth, graphImgHeight})
+		imageView.SetMargin(4)
+		imageView.SetMode(walk.ImageViewModeZoom)
+
+		// and dispose old image widget, and reassign the new one
+		mw.graphImage.Dispose()
+		mw.graphImage = imageView
+	} else {
 		log.Fatal("Cannot create new imageview")
 	}
-	imageView.SetImage(mw.getImageFromFile())
-	imageView.SetMinMaxSize(walk.Size{initialWinWidth, graphImgHeight},
-		walk.Size{initialWinWidth, graphImgHeight})
-	imageView.SetMargin(4)
-	imageView.SetMode(walk.ImageViewModeZoom)
-
-	// and dispose old image widget, and reassign the new one
-	mw.graphImage.Dispose()
-	mw.graphImage = imageView
 }

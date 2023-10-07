@@ -9,28 +9,28 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
-const regKeyBranch = `SOFTWARE\NateMorrison\CalcBandwidth`
-const regValue1 = "bwCurrentUsed"
-const regValue2 = "bwPerDayRemaining"
-const regValue3 = "dayOfMonth"
-const regValue4 = "monthOfYear"
-const regValue5 = "bwMin"
-const regValue6 = "bwMax"
-const initialWinWidth = 850
-const initialWinHeight = 1000
-const graphImgHeight = 750
+const (
+	regKeyBranch     = `SOFTWARE\NateMorrison\CalcBandwidth`
+	regValue1        = "bwCurrentUsed"
+	regValue2        = "bwPerDayRemaining"
+	regValue3        = "dayOfMonth"
+	regValue4        = "monthOfYear"
+	regValue5        = "bwMin"
+	regValue6        = "bwMax"
+	initialWinWidth  = 850
+	initialWinHeight = 1000
+	graphImgHeight   = 750
+)
 
 type MainWin struct {
 	*walk.MainWindow
-	resultMsgBox, barGraphBox                 *walk.TextEdit
-	bwTextBox, lowerTextBox, upperTextBox     *walk.LineEdit
-	fillPrevDaysCheckBox                      *walk.CheckBox
-	graphImage                                *walk.ImageView
-	key                                       *registry.Key
-	config                                    Config
-	dbValues                                  map[string][]byte
-	useEtcd                                   bool
-	bwCurrentUsed, gbPerDayLeft, bwMin, bwMax float64
+	resultMsgBox, barGraphBox             *walk.TextEdit
+	bwTextBox, lowerTextBox, upperTextBox *walk.LineEdit
+	fillPrevDaysCheckBox                  *walk.CheckBox
+	graphImage                            *walk.ImageView
+	key                                   *registry.Key
+	useEtcd                               bool
+	config                                Config
 }
 
 func main() {
@@ -64,7 +64,7 @@ func main() {
 							},
 							LineEdit{
 								AssignTo: &mw.bwTextBox,
-								Text:     strconv.FormatFloat(mw.bwCurrentUsed, 'f', -1, 64),
+								Text:     strconv.FormatFloat(mw.config.bwCurrentUsed, 'f', -1, 64),
 								// OnKeyPress event fires before we get the number, need to use OnKeyUp
 								OnKeyUp: func(keystroke walk.Key) {
 									if keystroke >= walk.Key0 && keystroke <= walk.Key9 { // if a digit key pressed
@@ -116,14 +116,14 @@ func main() {
 							},
 							LineEdit{
 								AssignTo: &mw.lowerTextBox,
-								Text:     string(mw.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue5]),
+								Text:     string(mw.config.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue5]),
 							},
 							Label{
 								Text: "Upper graph range:",
 							},
 							LineEdit{
 								AssignTo: &mw.upperTextBox,
-								Text:     string(mw.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue6]),
+								Text:     string(mw.config.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue6]),
 							},
 							Label{
 								Text: "Fill empty previous days:",
