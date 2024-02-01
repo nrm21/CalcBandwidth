@@ -83,17 +83,17 @@ func (mw *MainWin) calculateBandwidth() string {
 		hoursSinceMonthStart := time.Since(time.Date(currentYear, currentMonth, 1, 0, 0, 0, 0, time.Local)).Hours()
 		totalDaysInMonth := mw.calcMonthDays(currentMonth, currentYear)
 		gbPerDay := bwLimitGBs / totalDaysInMonth
-		gbAllowedSoFar := math.Round(bwLimitGBs / totalDaysInMonth * (hoursSinceMonthStart / 24))
+		gbAllowedSoFar := math.Round(gbPerDay*(hoursSinceMonthStart/24)*100) / 100 // gets number to 2 decimals
 		gbLeftToUse := bwLimitGBs - mw.config.bwCurrentUsed
 		daysLeftInMonth := totalDaysInMonth - (hoursSinceMonthStart / 24)
 		mw.config.gbPerDayLeft = gbLeftToUse / daysLeftInMonth
 		bwDifferential := gbAllowedSoFar - mw.config.bwCurrentUsed
 
-		output := fmt.Sprintf("Fractional days left in month:      %.3f         (Days this month:  %d)\r\n",
+		output := fmt.Sprintf("Fractional days left in month:     %.3f               (Days this month:  %d)\r\n",
 			daysLeftInMonth, int(totalDaysInMonth))
-		output += fmt.Sprintf("Bandwidth allowed up to today:   %.0f GB    (Used / Differential / Left:  %.0f / %.0f / %d GB)\r\n",
-			gbAllowedSoFar, mw.config.bwCurrentUsed, bwDifferential, int(gbLeftToUse))
-		output += fmt.Sprintf("Bandwidth per day remaining:     %.3f GB  (Daily average:  %.3f GB)\r\n", mw.config.gbPerDayLeft, gbPerDay)
+		output += fmt.Sprintf("Bandwidth allowed up to today:  %.2f GB    (Difference from used / Left: %.2f / %d GB)\r\n",
+			gbAllowedSoFar, bwDifferential, int(gbLeftToUse))
+		output += fmt.Sprintf("Bandwidth per day remaining:    %.2f GB       (Daily average:  %.2f GB)\r\n", mw.config.gbPerDayLeft, gbPerDay)
 
 		return output
 	}
