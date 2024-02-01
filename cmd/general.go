@@ -65,6 +65,15 @@ func (mw *MainWin) calcMonthDays(month time.Month, year int) float64 {
 	return days
 }
 
+// Simply returns the lower of 2 numbers
+func lower(x, y float64) float64 {
+	if x < y {
+		return x
+	} else {
+		return y
+	}
+}
+
 // This does all the calculations that are shown on the screen and returns the string to be printed
 func (mw *MainWin) calculateBandwidth() string {
 	const bwLimitGBs float64 = 1229
@@ -86,7 +95,7 @@ func (mw *MainWin) calculateBandwidth() string {
 		gbAllowedSoFar := math.Round(gbPerDay*(hoursSinceMonthStart/24)*100) / 100 // gets number to 2 decimals
 		gbLeftToUse := bwLimitGBs - mw.config.bwCurrentUsed
 		daysLeftInMonth := totalDaysInMonth - (hoursSinceMonthStart / 24)
-		mw.config.gbPerDayLeft = gbLeftToUse / daysLeftInMonth
+		mw.config.gbPerDayLeft = lower(gbLeftToUse/daysLeftInMonth, gbLeftToUse)
 		bwDifferential := gbAllowedSoFar - mw.config.bwCurrentUsed
 
 		output := fmt.Sprintf("Fractional days left in month:     %.3f               (Days this month:  %d)\r\n",
