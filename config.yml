@@ -1,7 +1,7 @@
 etcd:
   endpoints:
-    - 10.150.30.17:2379
-    - 10.150.30.18:2379
+    - 10.150.30.21:2379
+    - 10.150.30.22:2379
     - 10.150.30.19:2379
   baseKeyToWrite: /nate/CalcBandwidth
   timeout:        5
