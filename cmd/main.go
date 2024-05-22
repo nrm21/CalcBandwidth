@@ -31,6 +31,7 @@ type MainWin struct {
 	key                                   *registry.Key
 	useEtcd                               bool
 	config                                Config
+	exePath                               string
 }
 
 func main() {
@@ -38,11 +39,11 @@ func main() {
 	mw := new(MainWin)
 
 	// first get values from conf
-	exePath, _ := os.Getwd()
-	if exePath[len(exePath)-4:] == "\\cmd" || exePath[len(exePath)-4:] == "\\bin" {
-		exePath = exePath[:len(exePath)-4]
+	mw.exePath, _ = os.Getwd()
+	if mw.exePath[len(mw.exePath)-4:] == "\\cmd" || mw.exePath[len(mw.exePath)-4:] == "\\bin" {
+		mw.exePath = mw.exePath[:len(mw.exePath)-4]
 	}
-	mw.getConfigAndDBValues(exePath + "\\config.yml")
+	mw.getConfigAndDBValues(mw.exePath + "\\config.yml")
 
 	MainWindow{
 		AssignTo: &mw.MainWindow,
@@ -78,7 +79,6 @@ func main() {
 									// write values to db, reload them and update gui
 									mw.resultMsgBox.SetText(mw.calculateBandwidth())
 									mw.writeValuesToDB()
-									mw.getConfigAndDBValues(exePath + "\\config.yml")
 									mw.makeChart()
 									mw.refreshImage()
 								},
@@ -131,6 +131,15 @@ func main() {
 							CheckBox{
 								AssignTo: &mw.fillPrevDaysCheckBox,
 								Checked:  true,
+							},
+							PushButton{
+								Text: "   Delete latest day data   ",
+								OnClicked: func() {
+									// write values to db, reload them and update gui
+									mw.deleteLastDaysData()
+									mw.makeChart()
+									mw.refreshImage()
+								},
 							},
 						},
 					},

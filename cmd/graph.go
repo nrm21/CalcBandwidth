@@ -83,6 +83,8 @@ func setGraphUpperLowerExtents(mw *MainWin, min, max float64) {
 
 // Creates the bar graph png file
 func (mw *MainWin) makeChart() {
+	mw.getConfigAndDBValues(mw.exePath + "\\config.yml")
+
 	allValues, bars := getBarsData(mw)
 
 	// only render new graph if we have a dataset, otherwise just use the previously rendered png file

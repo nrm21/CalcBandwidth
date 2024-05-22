@@ -168,6 +168,33 @@ func (mw *MainWin) deleteIfNewMonth() {
 	}
 }
 
+// Find whichever is the higest numbered key in the range (to find the latest day of data)
+func findMaxKey(data map[string][]byte) string {
+	highestSeen := 0
+
+	for k, _ := range data {
+		intDay, _ := strconv.Atoi(k[len(k)-2:])
+
+		if intDay > highestSeen {
+			highestSeen = intDay
+		}
+	}
+
+	return strconv.Itoa(highestSeen)
+}
+
+// Deletes the last day of data  we have in the graph (in case the user wants to modify or
+// recalc the last few days, they can press it a few times to delete the appropriate amount)
+func (mw *MainWin) deleteLastDaysData() {
+	dayOfMonthSubkey := mw.config.Etcd.BaseKeyToWrite + "/" + regValue3
+	data, err := support.ReadFromEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints, dayOfMonthSubkey)
+	if err != nil {
+		log.Print(err.Error())
+	}
+	// print(data)
+	support.DeleteFromEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints, dayOfMonthSubkey+"/"+findMaxKey(data))
+}
+
 // Things to perform before showing GUI
 func (mw *MainWin) getConfigAndDBValues(exePath string) {
 	var err error
