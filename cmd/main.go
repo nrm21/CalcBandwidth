@@ -117,6 +117,7 @@ func main() {
 							LineEdit{
 								AssignTo: &mw.lowerTextBox,
 								Text:     string(mw.config.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue5]),
+								ReadOnly: true,
 							},
 							Label{
 								Text: "Upper graph range:",
@@ -124,6 +125,7 @@ func main() {
 							LineEdit{
 								AssignTo: &mw.upperTextBox,
 								Text:     string(mw.config.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue6]),
+								ReadOnly: true,
 							},
 							Label{
 								Text: "Fill empty previous days:",

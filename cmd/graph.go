@@ -51,31 +51,35 @@ func (mw *MainWin) getMinAndMaxOf(vals []float64) (float64, float64) {
 
 func setGraphUpperLowerExtents(mw *MainWin, min, max float64) {
 	if mw.lowerTextBox != nil {
-		if bwMinFromText, _ := strconv.ParseFloat(mw.lowerTextBox.Text(), 64); bwMinFromText <= min {
-			if bwMinFromText < 0 { // if min below zero just set to zero
-				mw.lowerTextBox.SetText("0")
-				mw.config.bwMin = 0
-			} else {
-				mw.config.bwMin = bwMinFromText
-			}
-		} else {
-			// if our value is higher than the minimum number ignore it and set it back to the minimum,
-			// this helps avoid out of range, divide by zero and other nasty errors
-			mw.lowerTextBox.SetText(fmt.Sprintf("%.3f", min))
-			mw.config.bwMin = min
-		}
+		// if bwMinFromText, _ := strconv.ParseFloat(mw.lowerTextBox.Text(), 64); bwMinFromText <= min {
+		// 	if bwMinFromText < 0 { // if min below zero just set to zero
+		// 		mw.lowerTextBox.SetText("0")
+		// 		mw.config.bwMin = 0
+		// 	} else {
+		// 		mw.config.bwMin = bwMinFromText
+		// 	}
+		// } else {
+
+		// if our value is higher than the minimum number ignore it and set it back to the minimum,
+		// this helps avoid out of range, divide by zero and other nasty errors
+		mw.lowerTextBox.SetText(fmt.Sprintf("%.3f", min))
+		mw.config.bwMin = min
+
+		// }
 	} else {
 		mw.config.bwMin, _ = strconv.ParseFloat(string(mw.config.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue5]), 64)
 	}
 	if mw.upperTextBox != nil {
-		if bwMaxFromText, _ := strconv.ParseFloat(mw.upperTextBox.Text(), 64); bwMaxFromText >= max {
-			mw.config.bwMax = bwMaxFromText
-		} else {
-			// if our value is lower than the maximum number ignore it and set it back to the maximum,
-			// this helps avoid out of range, divide by zero and other nasty errors
-			mw.upperTextBox.SetText(fmt.Sprintf("%.3f", max))
-			mw.config.bwMax = max
-		}
+		// if bwMaxFromText, _ := strconv.ParseFloat(mw.upperTextBox.Text(), 64); bwMaxFromText >= max {
+		// 	mw.config.bwMax = bwMaxFromText
+		// } else {
+		// if our value is lower than the maximum number ignore it and set it back to the maximum,
+		// this helps avoid out of range, divide by zero and other nasty errors
+
+		mw.upperTextBox.SetText(fmt.Sprintf("%.3f", max))
+		mw.config.bwMax = max
+
+		// }
 	} else {
 		mw.config.bwMax, _ = strconv.ParseFloat(string(mw.config.dbValues[mw.config.Etcd.BaseKeyToWrite+"/"+regValue6]), 64)
 	}
