@@ -95,7 +95,12 @@ func (mw *MainWin) makeChart() {
 		// Instead of setting min and max exactly, lets just round to the nearest
 		// integer below and above respectively to keep the graph somewhat pretty
 		min = float64(int(min))
-		max = float64(int(max)) + 1
+
+		// if max is already exactly an integer (before conversion) no need to round up one
+		if max != float64(int(max)) {
+			max = float64(int(max + 1))
+		}
+
 		setGraphUpperLowerExtents(mw, min, max)
 
 		// setup the values for the y axis based on min and max we are looking at
