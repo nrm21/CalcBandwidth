@@ -11,8 +11,10 @@ import (
 	"strings"
 	"time"
 
+	"MyLibs/myetcd"
+	"MyLibs/mysupport"
+
 	"github.com/lxn/walk"
-	"github.com/nrm21/support"
 	"golang.org/x/sys/windows/registry"
 	"gopkg.in/yaml.v2"
 )
@@ -32,7 +34,7 @@ type Config struct {
 
 // Unmarshals the config contents from file into memory
 func (mw *MainWin) getConfigContentsFromYaml(filename string) error {
-	file, err := support.ReadConfigFileContents(filename)
+	file, err := mysupport.ReadConfigFileContents(filename)
 	if err != nil {
 		return err
 	}
@@ -161,7 +163,7 @@ func (mw *MainWin) deleteIfNewMonth() {
 					strDay = fmt.Sprint(day)
 				}
 
-				support.DeleteFromEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
+				myetcd.DeleteFromEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
 					dayOfMonthSubkey+"/"+strDay)
 			}
 		}
@@ -184,28 +186,28 @@ func findMaxKey(data map[string][]byte) string {
 	if highestSeen < 10 {
 		return "0" + strconv.Itoa(highestSeen)
 	} else {
-	return strconv.Itoa(highestSeen)
+		return strconv.Itoa(highestSeen)
+	}
 }
 
 // Deletes the last day of data  we have in the graph (in case the user wants to modify or
 // recalc the last few days, they can press it a few times to delete the appropriate amount)
 func (mw *MainWin) deleteLastDaysData() {
 	dayOfMonthSubkey := mw.config.Etcd.BaseKeyToWrite + "/" + regValue3
-	data, err := support.ReadFromEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints, dayOfMonthSubkey)
+	data, err := myetcd.ReadFromEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints, dayOfMonthSubkey)
 	if err != nil {
 		log.Print(err.Error())
 	}
 	// print(data)
-	support.DeleteFromEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints, dayOfMonthSubkey+"/"+findMaxKey(data))
+	myetcd.DeleteFromEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints, dayOfMonthSubkey+"/"+findMaxKey(data))
 }
 
 // Things to perform before showing GUI
 func (mw *MainWin) getConfigAndDBValues(exePath string) {
-	var err error
-
 	mw.useEtcd = false
-	if err = mw.getConfigContentsFromYaml(exePath); err != nil {
-		log.Fatal("Cannot get contents from yaml")
+	err := mysupport.GetConfigContentsFromYaml(exePath, &mw.config)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	for _, address := range mw.config.Etcd.Endpoints {
@@ -218,7 +220,7 @@ func (mw *MainWin) getConfigAndDBValues(exePath string) {
 				walk.MsgBox(nil, "Fatal Error", "Fatal: "+err.Error(), walk.MsgBoxIconError)
 			}
 
-			mw.config.dbValues, err = support.ReadFromEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints, mw.config.Etcd.BaseKeyToWrite)
+			mw.config.dbValues, err = myetcd.ReadFromEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints, mw.config.Etcd.BaseKeyToWrite)
 			if err != nil {
 				walk.MsgBox(nil, "Fatal Error", "Fatal: "+err.Error()+"\nPossible authentication failure", walk.MsgBoxIconError)
 				log.Fatal(err.Error())
@@ -280,7 +282,7 @@ func addBarsToDBIfNeeded(mw *MainWin) {
 				barsLastValue += differenceBetweenDays
 				strDayOfMonth := getStrDayOfMonth(int(barsLastLabel))
 
-				support.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
+				myetcd.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
 					mw.config.Etcd.BaseKeyToWrite+"/"+regValue3+"/"+strDayOfMonth,
 					fmt.Sprintf("%.3f", barsLastValue))
 			}
@@ -299,17 +301,17 @@ func (mw *MainWin) writeValuesToDB() {
 		addBarsToDBIfNeeded(mw)
 
 		// then write to etcd
-		support.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
+		myetcd.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
 			mw.config.Etcd.BaseKeyToWrite+"/"+regValue1, fmt.Sprintf("%.0f", mw.config.bwCurrentUsed))
-		support.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
+		myetcd.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
 			mw.config.Etcd.BaseKeyToWrite+"/"+regValue2, fmt.Sprintf("%.3f", mw.config.gbPerDayLeft))
-		support.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
+		myetcd.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
 			mw.config.Etcd.BaseKeyToWrite+"/"+regValue3+"/"+strDayOfMonth, fmt.Sprintf("%.3f", mw.config.gbPerDayLeft))
-		support.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
+		myetcd.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
 			mw.config.Etcd.BaseKeyToWrite+"/"+regValue4, fmt.Sprintf("%d", int(time.Now().Month())))
-		support.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
+		myetcd.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
 			mw.config.Etcd.BaseKeyToWrite+"/"+regValue5, fmt.Sprintf("%.3f", mw.config.bwMin))
-		support.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
+		myetcd.WriteToEtcd(&mw.config.Etcd.CertPath, &mw.config.Etcd.Endpoints,
 			mw.config.Etcd.BaseKeyToWrite+"/"+regValue6, fmt.Sprintf("%.3f", mw.config.bwMax))
 	} else {
 		// or write to registry if no etcd
