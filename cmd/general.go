@@ -180,6 +180,10 @@ func findMaxKey(data map[string][]byte) string {
 		}
 	}
 
+	// if our number is single digit add a leading zero before returning
+	if highestSeen < 10 {
+		return "0" + strconv.Itoa(highestSeen)
+	} else {
 	return strconv.Itoa(highestSeen)
 }
 
