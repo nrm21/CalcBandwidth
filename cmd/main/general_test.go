@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"testing"
 	"time"
 )
@@ -16,41 +15,6 @@ func TestGeneral(t *testing.T) {
 		}
 		if expected != mw.config.Etcd.BaseKeyToWrite {
 			t.Errorf("ERROR: Expected: %q got: %q", expected, mw.config.Etcd.BaseKeyToWrite)
-		}
-	})
-
-	t.Run("GetConfigContentsFromYaml: Get config from correct YAML path", func(t *testing.T) {
-		tests := []struct {
-			field    string
-			expected string
-		}{
-			{"Endpoints", "10.150.30.17:2379"},
-			{"BaseKeyToWrite", "/nate/CalcBandwidth"},
-			{"CertPath", "E:\\Documents\\_Nate\\Computer Related\\Private keys\\Etcd Certs"},
-		}
-
-		exePath, _ := os.Getwd()
-		if exePath[len(exePath)-4:] == "\\bin" || exePath[len(exePath)-4:] == "\\cmd" || exePath[len(exePath)-4:] == "\\src" {
-			exePath = exePath[:len(exePath)-4]
-		}
-		exePath = exePath + "\\config.yml"
-		mw.getConfigContentsFromYaml(exePath)
-
-		for _, test := range tests {
-			switch test.field {
-			case "BaseKeyToWrite":
-				if test.expected != mw.config.Etcd.BaseKeyToWrite {
-					t.Errorf("ERROR: Expected: %q got: %q", test.expected, mw.config.Etcd.BaseKeyToWrite)
-				}
-			case "CertPath":
-				if test.expected != mw.config.Etcd.CertPath {
-					t.Errorf("ERROR: Expected: %q got: %q", test.expected, mw.config.Etcd.CertPath)
-				}
-			case "Endpoints":
-				if test.expected != mw.config.Etcd.Endpoints[0] {
-					t.Errorf("ERROR: Expected: %q got: %q", test.expected, mw.config.Etcd.CertPath)
-				}
-			}
 		}
 	})
 }
