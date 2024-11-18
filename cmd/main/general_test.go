@@ -1,6 +1,7 @@
 package main
 
 import (
+	"MyLibs/mysupport"
 	"testing"
 	"time"
 )
@@ -10,7 +11,7 @@ func TestGeneral(t *testing.T) {
 
 	t.Run("GetConfigContentsFromYaml: Get config from empty path", func(t *testing.T) {
 		expected := ""
-		if err := mw.getConfigContentsFromYaml(""); err == nil {
+		if err := mysupport.GetConfigContentsFromYaml("", mw.config); err == nil {
 			t.Errorf("ERROR: Expected: an fs.PathError but got none")
 		}
 		if expected != mw.config.Etcd.BaseKeyToWrite {

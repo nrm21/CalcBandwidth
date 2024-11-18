@@ -16,7 +16,6 @@ import (
 
 	"github.com/lxn/walk"
 	"golang.org/x/sys/windows/registry"
-	"gopkg.in/yaml.v2"
 )
 
 // Config struct
@@ -30,20 +29,6 @@ type Config struct {
 	}
 	dbValues                                  map[string][]byte
 	bwCurrentUsed, gbPerDayLeft, bwMin, bwMax float64
-}
-
-// Unmarshals the config contents from file into memory
-func (mw *MainWin) getConfigContentsFromYaml(filename string) error {
-	file, err := mysupport.ReadConfigFileContents(filename)
-	if err != nil {
-		return err
-	}
-	err = yaml.Unmarshal(file, &mw.config)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // Returns the number of days in the month
